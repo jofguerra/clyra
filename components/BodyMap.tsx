@@ -1,0 +1,523 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity,
+  Animated, Easing, Image, useWindowDimensions,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { FlaskConical, ChevronRight } from 'lucide-react-native';
+import { Colors } from '../constants/colors';
+import { Typography } from '../constants/typography';
+import {
+  BODY_SYSTEMS, BodySystem, SystemStatus,
+  getSystemStatus, getSystemBiomarkers,
+} from '../constants/biomarkerSystems';
+import { Biomarker } from '../services/openai';
+import { useStore } from '../hooks/useStore';
+import { useT } from '../hooks/useT';
+import { getBiomarkerKnowledge } from '../constants/biomarkerKnowledge';
+
+// ─── Image dimensions (484 × 970) — body-map2.png ────────────────────────────
+const IMG_W = 484;
+const IMG_H = 970;
+const IMG_RATIO = IMG_W / IMG_H;
+
+// Hotspot positions calibrated to body-map2 organ centers
+const SYSTEM_HOTSPOTS: Record<string, { xPct: number; yPct: number }> = {
+  tiroideo:      { xPct: 50,  yPct: 22 },
+  hematologico:  { xPct: 35,  yPct: 31 },
+  cardiovascular:{ xPct: 43,  yPct: 34 },
+  vitaminas:     { xPct: 63,  yPct: 31 },
+  hepatico:      { xPct: 62,  yPct: 43 },
+  metabolico:    { xPct: 44,  yPct: 46 },
+  renal:         { xPct: 63,  yPct: 54 },
+  hormonal:      { xPct: 45,  yPct: 61 },
+};
+
+// Which side each system label appears on
+// 'left' = label column on left, 'right' = label column on right
+const SIDE: Record<string, 'left' | 'right'> = {
+  tiroideo:      'left',
+  hematologico:  'left',
+  cardiovascular:'left',
+  metabolico:    'left',
+  hormonal:      'left',
+  vitaminas:     'right',
+  hepatico:      'right',
+  renal:         'right',
+};
+
+const STATUS_COLOR: Record<SystemStatus, string> = {
+  normal:     Colors.optimal,
+  borderline: Colors.borderline,
+  attention:  Colors.attention,
+  none:       '#9BAABF',
+};
+
+// ─── Pulsing ring ─────────────────────────────────────────────────────────────
+const DOT_R = 8;
+
+function PulseRing({ color }: { color: string }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(anim, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 2.6] });
+  const opacity = anim.interpolate({ inputRange: [0, 0.4, 1], outputRange: [0.7, 0.3, 0] });
+  return (
+    <Animated.View pointerEvents="none" style={[styles.pulseRing, { borderColor: color, transform: [{ scale }], opacity }]} />
+  );
+}
+
+// ─── Small dot on body (no text) ─────────────────────────────────────────────
+
+function BodyDot({ system, status, selected, imgW, imgH, onPress }: {
+  system: BodySystem; status: SystemStatus; selected: boolean;
+  imgW: number; imgH: number; onPress: () => void;
+}) {
+  const pos = SYSTEM_HOTSPOTS[system.id];
+  if (!pos) return null;
+  const cx = (pos.xPct / 100) * imgW;
+  const cy = (pos.yPct / 100) * imgH;
+  const color = STATUS_COLOR[status];
+  const shouldPulse = status === 'attention' || status === 'borderline';
+  return (
+    <TouchableOpacity
+      activeOpacity={0.75}
+      onPress={onPress}
+      style={[styles.dot, {
+        left: cx - DOT_R, top: cy - DOT_R,
+        width: DOT_R * 2, height: DOT_R * 2, borderRadius: DOT_R,
+        backgroundColor: color,
+        borderColor: selected ? 'white' : 'rgba(255,255,255,0.5)',
+        borderWidth: selected ? 2.5 : 1.5,
+        shadowColor: color, shadowOpacity: selected ? 0.8 : 0.4, shadowRadius: selected ? 8 : 3,
+        elevation: selected ? 8 : 3,
+        transform: [{ scale: selected ? 1.4 : 1 }],
+      }]}
+    >
+      {shouldPulse && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <PulseRing color={color} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ─── Side label chip ──────────────────────────────────────────────────────────
+
+function SideLabel({ system, status, selected, yPct, imgH, side, onPress }: {
+  system: BodySystem; status: SystemStatus; selected: boolean;
+  yPct: number; imgH: number; side: 'left' | 'right'; onPress: () => void;
+}) {
+  const language = useStore(s => s.language) as 'en' | 'es';
+  const color = STATUS_COLOR[status];
+  const bg = selected ? color + '25' : color + '12';
+  const borderColor = selected ? color + '80' : color + '30';
+  const topPos = (yPct / 100) * imgH - 14;
+
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[
+        styles.sideLabel,
+        side === 'left' ? styles.sideLabelLeft : styles.sideLabelRight,
+        { top: topPos, backgroundColor: bg, borderColor },
+        selected && styles.sideLabelSelected,
+      ]}
+    >
+      <View style={[styles.sideDot, { backgroundColor: color }]} />
+      <Text style={[styles.sideLabelText, { color: selected ? color : Colors.foreground }]}>
+        {system.shortName[language]}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Biomarker pill ───────────────────────────────────────────────────────────
+
+function BiomarkerPill({ biomarker, language, onPress }: {
+  biomarker: Biomarker; language: string; onPress: () => void;
+}) {
+  const t = useT();
+  const knowledge = getBiomarkerKnowledge(biomarker.name);
+  const displayName = knowledge?.simpleName?.[language as 'en' | 'es'] ?? biomarker.name;
+  const statusColor = {
+    normal: Colors.optimal, borderline: Colors.borderline,
+    low: Colors.attention, high: Colors.attention,
+  }[biomarker.status] ?? Colors.mutedForeground;
+  const statusBg = {
+    normal: Colors.optimal10, borderline: Colors.borderline10,
+    low: Colors.attention10, high: Colors.attention10,
+  }[biomarker.status] ?? Colors.surfaceLow;
+  const statusLabel = {
+    normal: t('statusNormal'), borderline: t('statusBorderline'),
+    low: t('statusLow'), high: t('statusHigh'),
+  }[biomarker.status] ?? '';
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      style={[styles.pill, { backgroundColor: statusBg, borderColor: statusColor + '40' }]}
+    >
+      <View style={styles.pillLeft}>
+        <Text style={styles.pillName}>{displayName}</Text>
+        <Text style={styles.pillOriginal}>{biomarker.name}</Text>
+        {biomarker.referenceRange
+          ? <Text style={styles.pillRef}>Ref: {biomarker.referenceRange} {biomarker.unit}</Text>
+          : null}
+      </View>
+      <View style={styles.pillRight}>
+        <Text style={[styles.pillValue, { color: statusColor }]}>{biomarker.value} {biomarker.unit}</Text>
+        <View style={[styles.pillChip, { backgroundColor: statusColor }]}>
+          <Text style={styles.pillChipText}>{statusLabel}</Text>
+        </View>
+        <ChevronRight size={13} color={Colors.outline} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+// ─── Required test row ────────────────────────────────────────────────────────
+
+function RequiredTestRow({ name, description }: { name: string; description: string }) {
+  return (
+    <View style={styles.testRow}>
+      <View style={styles.testIcon}><FlaskConical size={13} color={Colors.primary} /></View>
+      <View style={styles.testText}>
+        <Text style={styles.testName}>{name}</Text>
+        <Text style={styles.testDesc}>{description}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
+  const router = useRouter();
+  const t = useT();
+  const language = useStore(s => s.language) as 'en' | 'es';
+  const { width: screenWidth } = useWindowDimensions();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const STATUS_LABEL: Record<SystemStatus, string> = {
+    normal:     t('legendNormal'),
+    borderline: t('legendBorderline'),
+    attention:  t('legendAttention'),
+    none:       t('legendNoData'),
+  };
+
+  // Body image: 52% of screen width
+  const imgDisplayW = Math.round(screenWidth * 0.52);
+  const imgDisplayH = Math.round(imgDisplayW / IMG_RATIO);
+  // Side columns: each gets ~24% of screen width
+  const colW = Math.round(screenWidth * 0.24);
+
+  const leftSystems = BODY_SYSTEMS.filter(s => SIDE[s.id] === 'left');
+  const rightSystems = BODY_SYSTEMS.filter(s => SIDE[s.id] === 'right');
+
+  const selectedSystem = BODY_SYSTEMS.find(s => s.id === selectedId) ?? null;
+  const selectedBiomarkers = selectedSystem ? getSystemBiomarkers(selectedSystem, biomarkers) : [];
+  const selectedStatus = selectedSystem ? getSystemStatus(selectedSystem, biomarkers) : 'none';
+  const selectedColor = STATUS_COLOR[selectedStatus];
+
+  const handleSelect = (id: string) => setSelectedId(prev => prev === id ? null : id);
+
+  return (
+    <View style={styles.wrapper}>
+
+      {/* ── Three-column layout ── */}
+      <View style={[styles.mapRow, { height: imgDisplayH }]}>
+
+        {/* Left labels */}
+        <View style={[styles.sideCol, { width: colW, height: imgDisplayH }]}>
+          {leftSystems.map(system => {
+            const pos = SYSTEM_HOTSPOTS[system.id];
+            if (!pos) return null;
+            return (
+              <SideLabel
+                key={system.id}
+                system={system}
+                status={getSystemStatus(system, biomarkers)}
+                selected={selectedId === system.id}
+                yPct={pos.yPct}
+                imgH={imgDisplayH}
+                side="left"
+                onPress={() => handleSelect(system.id)}
+              />
+            );
+          })}
+        </View>
+
+        {/* Body image with dots */}
+        <View style={[styles.imageContainer, { width: imgDisplayW, height: imgDisplayH }]}>
+          <Image
+            source={require('../assets/body-map2.png')}
+            style={{ width: imgDisplayW, height: imgDisplayH, opacity: 0.88 }}
+            resizeMode="contain"
+          />
+          {BODY_SYSTEMS.map(system => (
+            <BodyDot
+              key={system.id}
+              system={system}
+              status={getSystemStatus(system, biomarkers)}
+              selected={selectedId === system.id}
+              imgW={imgDisplayW}
+              imgH={imgDisplayH}
+              onPress={() => handleSelect(system.id)}
+            />
+          ))}
+        </View>
+
+        {/* Right labels */}
+        <View style={[styles.sideCol, { width: colW, height: imgDisplayH }]}>
+          {rightSystems.map(system => {
+            const pos = SYSTEM_HOTSPOTS[system.id];
+            if (!pos) return null;
+            return (
+              <SideLabel
+                key={system.id}
+                system={system}
+                status={getSystemStatus(system, biomarkers)}
+                selected={selectedId === system.id}
+                yPct={pos.yPct}
+                imgH={imgDisplayH}
+                side="right"
+                onPress={() => handleSelect(system.id)}
+              />
+            );
+          })}
+        </View>
+      </View>
+
+      {/* Legend */}
+      <View style={styles.legend}>
+        {(['normal', 'borderline', 'attention', 'none'] as SystemStatus[]).map(s => (
+          <View key={s} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: STATUS_COLOR[s] }]} />
+            <Text style={styles.legendLabel}>{STATUS_LABEL[s]}</Text>
+          </View>
+        ))}
+      </View>
+
+      {!selectedSystem && (
+        <Text style={styles.tapHint}>
+          {biomarkers.length > 0 ? t('tapToSeeMarkers') : t('tapToSeeTests')}
+        </Text>
+      )}
+
+      {/* Detail panel */}
+      {selectedSystem && (
+        <View style={[styles.panel, { borderColor: selectedColor + '30' }]}>
+          <View style={styles.panelHeader}>
+            <Text style={styles.panelEmoji}>{selectedSystem.emoji}</Text>
+            <Text style={styles.panelTitle}>{selectedSystem.name[language]}</Text>
+            <View style={[styles.statusChip, { backgroundColor: selectedColor + '20' }]}>
+              <Text style={[styles.statusChipText, { color: selectedColor }]}>
+                {STATUS_LABEL[selectedStatus]}
+              </Text>
+            </View>
+          </View>
+
+          {selectedBiomarkers.length > 0 ? (
+            <View style={styles.pillList}>
+              {selectedBiomarkers.map(b => (
+                <BiomarkerPill
+                  key={b.name}
+                  biomarker={b}
+                  language={language}
+                  onPress={() => router.push(`/biomarker/${encodeURIComponent(b.name)}`)}
+                />
+              ))}
+            </View>
+          ) : (
+            <>
+              <Text style={styles.noDataTitle}>{t('noDataForSystem')}</Text>
+              <Text style={styles.noDataSub}>{t('askForTests')}</Text>
+              <View style={styles.testList}>
+                {selectedSystem.requiredTests.map(req => (
+                  <RequiredTestRow
+                    key={req.name[language]}
+                    name={req.name[language]}
+                    description={req.description[language]}
+                  />
+                ))}
+              </View>
+            </>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const styles = StyleSheet.create({
+  wrapper: { width: '100%' },
+
+  mapRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+  sideCol: {
+    position: 'relative',
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+
+  // Body dot (no text, just colored indicator)
+  dot: {
+    position: 'absolute',
+    shadowOffset: { width: 0, height: 2 },
+  },
+
+  pulseRing: {
+    position: 'absolute',
+    width: DOT_R * 2, height: DOT_R * 2,
+    borderRadius: DOT_R, borderWidth: 1.5,
+    top: 0, left: 0,
+  },
+
+  // Side labels
+  sideLabel: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  sideLabelLeft: {
+    right: 4,
+  },
+  sideLabelRight: {
+    left: 4,
+  },
+  sideLabelSelected: {
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
+  },
+  sideDot: {
+    width: 6, height: 6, borderRadius: 3,
+  },
+  sideLabelText: {
+    fontFamily: Typography.families.body,
+    fontSize: 10, fontWeight: '700',
+  },
+
+  // Legend
+  legend: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 6,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendDot: { width: 7, height: 7, borderRadius: 3.5 },
+  legendLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 10, color: Colors.mutedForeground, fontWeight: '500',
+  },
+
+  tapHint: {
+    fontFamily: Typography.families.body,
+    textAlign: 'center', fontSize: 12, color: Colors.outline,
+    marginBottom: 12, fontStyle: 'italic',
+  },
+
+  // Detail panel
+  panel: {
+    borderRadius: 20, borderWidth: 1,
+    backgroundColor: '#ffffff',
+    padding: 16, marginTop: 4,
+    shadowColor: '#171c1f',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+  },
+  panelHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    gap: 8, marginBottom: 14,
+  },
+  panelEmoji: { fontSize: 20 },
+  panelTitle: {
+    fontFamily: Typography.families.body,
+    flex: 1, fontSize: 16, fontWeight: '700', color: Colors.foreground,
+  },
+  statusChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9999 },
+  statusChipText: {
+    fontFamily: Typography.families.body,
+    fontSize: 11, fontWeight: '700',
+  },
+
+  // Biomarker pills
+  pillList: { gap: 8 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12, borderWidth: 1,
+    paddingHorizontal: 12, paddingVertical: 10,
+  },
+  pillLeft: { flex: 1, gap: 1 },
+  pillName: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '700', color: Colors.foreground,
+  },
+  pillOriginal: {
+    fontFamily: Typography.families.body,
+    fontSize: 10, color: Colors.outline,
+  },
+  pillRef: {
+    fontFamily: Typography.families.body,
+    fontSize: 10, color: Colors.outline,
+  },
+  pillRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  pillValue: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '700',
+  },
+  pillChip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  pillChipText: {
+    fontFamily: Typography.families.body,
+    fontSize: 9, fontWeight: '700', color: 'white',
+  },
+
+  // No data
+  noDataTitle: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '600', color: Colors.foreground, marginBottom: 4,
+  },
+  noDataSub: {
+    fontFamily: Typography.families.body,
+    fontSize: 12, color: Colors.outline, marginBottom: 12,
+  },
+  testList: { gap: 10 },
+  testRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  testIcon: {
+    width: 26, height: 26, borderRadius: 8,
+    backgroundColor: Colors.primary10,
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  testText: { flex: 1 },
+  testName: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '700', color: Colors.foreground, marginBottom: 2,
+  },
+  testDesc: {
+    fontFamily: Typography.families.body,
+    fontSize: 11, color: Colors.mutedForeground, lineHeight: 16,
+  },
+});
