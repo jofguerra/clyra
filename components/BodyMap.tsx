@@ -9,7 +9,7 @@ import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
 import {
   BODY_SYSTEMS, BodySystem, SystemStatus,
-  getSystemStatus, getSystemBiomarkers,
+  getSystemStatus, getSystemBiomarkers, SAMPLE_TYPE_EMOJI,
 } from '../constants/biomarkerSystems';
 import { Biomarker } from '../services/openai';
 import { useStore } from '../hooks/useStore';
@@ -32,6 +32,25 @@ const SYSTEM_HOTSPOTS: Record<string, { xPct: number; yPct: number }> = {
   renal:         { xPct: 63,  yPct: 54 },
   hormonal:      { xPct: 45,  yPct: 61 },
 };
+
+// Minimum vertical distance between labels in pixels
+const MIN_LABEL_GAP = 30;
+
+/**
+ * Spread labels vertically so they don't overlap.
+ * Takes an array of { id, rawTop } sorted by rawTop and returns adjusted positions.
+ */
+function spreadLabels(items: { id: string; rawTop: number }[]): Record<string, number> {
+  const sorted = [...items].sort((a, b) => a.rawTop - b.rawTop);
+  const result: Record<string, number> = {};
+  let lastBottom = -Infinity;
+  for (const item of sorted) {
+    const adjusted = Math.max(item.rawTop, lastBottom + MIN_LABEL_GAP);
+    result[item.id] = adjusted;
+    lastBottom = adjusted;
+  }
+  return result;
+}
 
 // Which side each system label appears on
 // 'left' = label column on left, 'right' = label column on right
@@ -110,15 +129,15 @@ function BodyDot({ system, status, selected, imgW, imgH, onPress }: {
 
 // ─── Side label chip ──────────────────────────────────────────────────────────
 
-function SideLabel({ system, status, selected, yPct, imgH, side, onPress }: {
+function SideLabel({ system, status, selected, yPct, imgH, side, topOverride, onPress }: {
   system: BodySystem; status: SystemStatus; selected: boolean;
-  yPct: number; imgH: number; side: 'left' | 'right'; onPress: () => void;
+  yPct: number; imgH: number; side: 'left' | 'right'; topOverride?: number; onPress: () => void;
 }) {
   const language = useStore(s => s.language) as 'en' | 'es';
   const color = STATUS_COLOR[status];
   const bg = selected ? color + '25' : color + '12';
   const borderColor = selected ? color + '80' : color + '30';
-  const topPos = (yPct / 100) * imgH - 14;
+  const topPos = topOverride ?? ((yPct / 100) * imgH - 14);
 
   return (
     <TouchableOpacity
@@ -186,12 +205,21 @@ function BiomarkerPill({ biomarker, language, onPress }: {
 
 // ─── Required test row ────────────────────────────────────────────────────────
 
-function RequiredTestRow({ name, description }: { name: string; description: string }) {
+function RequiredTestRow({ name, description, sampleType }: { name: string; description: string; sampleType?: string }) {
   return (
     <View style={styles.testRow}>
       <View style={styles.testIcon}><FlaskConical size={13} color={Colors.primary} /></View>
       <View style={styles.testText}>
-        <Text style={styles.testName}>{name}</Text>
+        <View style={styles.testNameRow}>
+          <Text style={styles.testName}>{name}</Text>
+          {sampleType && (
+            <View style={styles.sampleBadge}>
+              <Text style={styles.sampleBadgeText}>
+                {SAMPLE_TYPE_EMOJI[sampleType] ?? ''} {sampleType}
+              </Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.testDesc}>{description}</Text>
       </View>
     </View>
@@ -223,6 +251,14 @@ export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
   const leftSystems = BODY_SYSTEMS.filter(s => SIDE[s.id] === 'left');
   const rightSystems = BODY_SYSTEMS.filter(s => SIDE[s.id] === 'right');
 
+  // Pre-compute spread label positions to avoid overlap
+  const leftSpread = spreadLabels(
+    leftSystems.map(s => ({ id: s.id, rawTop: ((SYSTEM_HOTSPOTS[s.id]?.yPct ?? 0) / 100) * imgDisplayH - 14 }))
+  );
+  const rightSpread = spreadLabels(
+    rightSystems.map(s => ({ id: s.id, rawTop: ((SYSTEM_HOTSPOTS[s.id]?.yPct ?? 0) / 100) * imgDisplayH - 14 }))
+  );
+
   const selectedSystem = BODY_SYSTEMS.find(s => s.id === selectedId) ?? null;
   const selectedBiomarkers = selectedSystem ? getSystemBiomarkers(selectedSystem, biomarkers) : [];
   const selectedStatus = selectedSystem ? getSystemStatus(selectedSystem, biomarkers) : 'none';
@@ -250,6 +286,7 @@ export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
                 yPct={pos.yPct}
                 imgH={imgDisplayH}
                 side="left"
+                topOverride={leftSpread[system.id]}
                 onPress={() => handleSelect(system.id)}
               />
             );
@@ -290,6 +327,7 @@ export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
                 yPct={pos.yPct}
                 imgH={imgDisplayH}
                 side="right"
+                topOverride={rightSpread[system.id]}
                 onPress={() => handleSelect(system.id)}
               />
             );
@@ -347,6 +385,7 @@ export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
                     key={req.name[language]}
                     name={req.name[language]}
                     description={req.description[language]}
+                    sampleType={req.sampleType}
                   />
                 ))}
               </View>
@@ -393,17 +432,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 5,
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
+    minHeight: 26,
   },
   sideLabelLeft: {
-    right: 4,
+    right: 0,
   },
   sideLabelRight: {
-    left: 4,
+    left: 0,
   },
   sideLabelSelected: {
     shadowColor: Colors.primary,
@@ -415,7 +455,7 @@ const styles = StyleSheet.create({
   },
   sideLabelText: {
     fontFamily: Typography.families.body,
-    fontSize: 10, fontWeight: '700',
+    fontSize: 9, fontWeight: '700',
   },
 
   // Legend
@@ -512,9 +552,22 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', marginTop: 1,
   },
   testText: { flex: 1 },
+  testNameRow: {
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6, marginBottom: 2,
+  },
   testName: {
     fontFamily: Typography.families.body,
-    fontSize: 13, fontWeight: '700', color: Colors.foreground, marginBottom: 2,
+    fontSize: 13, fontWeight: '700', color: Colors.foreground,
+  },
+  sampleBadge: {
+    backgroundColor: Colors.muted,
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  sampleBadgeText: {
+    fontFamily: Typography.families.body,
+    fontSize: 9, color: Colors.mutedForeground, textTransform: 'capitalize' as const,
   },
   testDesc: {
     fontFamily: Typography.families.body,

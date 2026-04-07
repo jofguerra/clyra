@@ -1,143 +1,181 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, Dimensions } from 'react-native';
+import React, { useRef, useState } from 'react';
+import {
+    View,
+    Text,
+    StyleSheet,
+    SafeAreaView,
+    Dimensions,
+    ScrollView,
+    NativeSyntheticEvent,
+    NativeScrollEvent,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Activity, Shield, Lock, Sparkles, BookOpen } from 'lucide-react-native';
+import { Activity, TrendingUp, Sparkles } from 'lucide-react-native';
 import Button from '../../components/ui/Button';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
+import { useT } from '../../hooks/useT';
 
 const { width } = Dimensions.get('window');
 
+const ICON_SIZE = 56;
+
+const slides = [
+    { titleKey: 'onb1Title' as const, subKey: 'onb1Sub' as const, Icon: Activity },
+    { titleKey: 'onb2Title' as const, subKey: 'onb2Sub' as const, Icon: TrendingUp },
+    { titleKey: 'onb3Title' as const, subKey: 'onb3Sub' as const, Icon: Sparkles },
+];
+
 export default function WelcomeScreen() {
     const router = useRouter();
+    const t = useT();
+    const scrollRef = useRef<ScrollView>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
+
+    const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+        const index = Math.round(e.nativeEvent.contentOffset.x / width);
+        setActiveIndex(index);
+    };
 
     return (
-        <LinearGradient
-            colors={[Colors.surface, Colors.background]}
-            style={styles.container}
-        >
-            <SafeAreaView style={styles.safeArea}>
-                <View style={styles.content}>
-                    <View style={styles.logoWrapper}>
-                        <View style={styles.logoBox}>
-                            <Activity color={Colors.primaryForeground} size={48} />
-                        </View>
-                    </View>
-
-                    <Text style={styles.headline}>
-                        Entiende Tu Sangre. Optimiza Tu Salud.
-                    </Text>
-                    <Text style={styles.subheadline}>
-                        Sube tus resultados de análisis de sangre y obtén información impulsada por IA, orientación personalizada y seguimiento de tu progreso.
-                    </Text>
-
-                    <View style={styles.trustRow}>
-                        <View style={styles.trustItem}>
-                            <Shield color={Colors.primary} size={20} />
-                            <Text style={styles.trustText}>Seguro</Text>
-                        </View>
-                        <View style={styles.trustItem}>
-                            <Lock color={Colors.primary} size={20} />
-                            <Text style={styles.trustText}>Privado</Text>
-                        </View>
-                        <View style={styles.trustItem}>
-                            <Sparkles color={Colors.primary} size={20} />
-                            <Text style={styles.trustText}>Personal</Text>
-                        </View>
-                        <View style={styles.trustItem}>
-                            <BookOpen color={Colors.primary} size={20} />
-                            <Text style={styles.trustText}>Educativo</Text>
-                        </View>
-                    </View>
+        <SafeAreaView style={styles.container}>
+            {/* Logo at top */}
+            <View style={styles.logoRow}>
+                <View style={styles.logoBox}>
+                    <Activity color={Colors.primaryForeground} size={28} />
                 </View>
+                <Text style={styles.logoText}>Clyra</Text>
+            </View>
 
-                <View style={styles.footer}>
-                    <Button
-                        title="Comenzar"
-                        onPress={() => router.push('/onboarding/profile')}
-                        size="lg"
-                        style={styles.primaryButton}
+            {/* Swipeable slides */}
+            <ScrollView
+                ref={scrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={handleScroll}
+                style={styles.scrollView}
+            >
+                {slides.map((slide, i) => (
+                    <View key={i} style={styles.slide}>
+                        <View style={styles.iconCircle}>
+                            <slide.Icon color={Colors.primary} size={ICON_SIZE} strokeWidth={1.5} />
+                        </View>
+                        <Text style={styles.slideTitle}>{t(slide.titleKey)}</Text>
+                        <Text style={styles.slideSub}>{t(slide.subKey)}</Text>
+                    </View>
+                ))}
+            </ScrollView>
+
+            {/* Pagination dots */}
+            <View style={styles.dotsRow}>
+                {slides.map((_, i) => (
+                    <View
+                        key={i}
+                        style={[
+                            styles.dot,
+                            i === activeIndex ? styles.dotActive : styles.dotInactive,
+                        ]}
                     />
-                    <Button
-                        title="Ver Demo"
-                        onPress={() => router.push('/(tabs)')}
-                        variant="outline"
-                        size="lg"
-                    />
-                </View>
-            </SafeAreaView>
-        </LinearGradient>
+                ))}
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+                <Button
+                    title={t('onbGetStarted')}
+                    onPress={() => router.push('/onboarding/profile')}
+                    size="lg"
+                    style={styles.primaryButton}
+                />
+            </View>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: Colors.background,
     },
-    safeArea: {
-        flex: 1,
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 24,
-        justifyContent: 'center',
+    logoRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-    },
-    logoWrapper: {
-        marginBottom: 40,
-        shadowColor: Colors.primary,
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.2,
-        shadowRadius: 32,
-        elevation: 8,
+        gap: 10,
+        paddingHorizontal: 24,
+        paddingTop: 16,
     },
     logoBox: {
-        width: 96,
-        height: 96,
+        width: 40,
+        height: 40,
         backgroundColor: Colors.primary,
-        borderRadius: 24,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    headline: {
+    logoText: {
+        fontFamily: Typography.families.display,
+        fontSize: Typography.sizes.lg,
+        fontWeight: '700',
+        color: Colors.foreground,
+    },
+    scrollView: {
+        flex: 1,
+    },
+    slide: {
+        width,
+        paddingHorizontal: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    iconCircle: {
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        backgroundColor: Colors.primary10,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 40,
+    },
+    slideTitle: {
         fontFamily: Typography.families.display,
         fontSize: Typography.sizes.huge,
         fontWeight: '700',
         color: Colors.foreground,
         textAlign: 'center',
-        lineHeight: 52,
+        lineHeight: 44,
         marginBottom: 16,
     },
-    subheadline: {
+    slideSub: {
         fontFamily: Typography.families.body,
         fontSize: Typography.sizes.lg,
         color: Colors.mutedForeground,
         textAlign: 'center',
-        lineHeight: 28,
-        marginBottom: 48,
-        paddingHorizontal: 16,
+        lineHeight: 26,
+        paddingHorizontal: 8,
     },
-    trustRow: {
+    dotsRow: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        paddingHorizontal: 16,
-    },
-    trustItem: {
+        justifyContent: 'center',
         alignItems: 'center',
         gap: 8,
+        paddingBottom: 16,
     },
-    trustText: {
-        fontFamily: Typography.families.body,
-        fontSize: Typography.sizes.sm,
-        color: Colors.mutedForeground,
-        fontWeight: '500',
+    dot: {
+        height: 8,
+        borderRadius: 4,
+    },
+    dotActive: {
+        width: 24,
+        backgroundColor: Colors.primary,
+    },
+    dotInactive: {
+        width: 8,
+        backgroundColor: Colors.outlineVariant,
     },
     footer: {
-        padding: 24,
+        paddingHorizontal: 24,
         paddingBottom: 40,
-        gap: 16,
     },
     primaryButton: {
         shadowColor: Colors.primary,
@@ -145,5 +183,5 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 16,
         elevation: 6,
-    }
+    },
 });

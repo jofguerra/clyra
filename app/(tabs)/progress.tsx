@@ -6,17 +6,22 @@ import Svg, { Circle, Polyline, Line } from 'react-native-svg';
 import {
   TrendingUp, TrendingDown, Minus,
   ChevronRight, ArrowUp, ArrowDown, Stethoscope, Share2,
-  CheckCheck, Leaf, Dumbbell, Droplets, Flame, Heart,
+  CheckCheck, Droplets, Flame, Heart,
+  Trophy, Pencil, Check, Plus,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AppHeader from '../../components/AppHeader';
+import AchievementBadge from '../../components/AchievementBadge';
+import XPBar from '../../components/ui/XPBar';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
-import { useStore } from '../../hooks/useStore';
+import { useStore, HealthGoal } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
 import { Biomarker } from '../../services/openai';
 import { getBiomarkerKnowledge } from '../../constants/biomarkerKnowledge';
-import { generateDoctorQuestions } from '../../constants/healthMetrics';
+import { generateDoctorQuestions, simulateImprovement } from '../../constants/healthMetrics';
+import { ACHIEVEMENTS, getScoreLevel } from '../../constants/gamification';
+import { GOALS } from '../../constants/healthGoals';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -281,95 +286,6 @@ function DoctorQuestionCard({ question, marker, lang }: {
   );
 }
 
-// ─── Action Card (what to eat / do per marker) ───────────────────────────────
-
-function ActionCard({ biomarker, language, t }: {
-  biomarker: Biomarker; language: string; t: ReturnType<typeof useT>;
-}) {
-  const knowledge = getBiomarkerKnowledge(biomarker.name);
-  const displayName = knowledge?.simpleName?.[language as 'en' | 'es'] ?? biomarker.name;
-  const foodsToEat = knowledge?.foodsToEat?.[language as 'en' | 'es'];
-  const foodsToAvoid = knowledge?.foodsToAvoid?.[language as 'en' | 'es'];
-  const router = useRouter();
-
-  if (!foodsToEat && !foodsToAvoid) return null;
-
-  const color = biomarker.status === 'borderline' ? Colors.borderline : Colors.attention;
-  const statusLabel = {
-    borderline: language === 'es' ? 'Límite' : 'Borderline',
-    high: language === 'es' ? 'Alto' : 'High',
-    low: language === 'es' ? 'Bajo' : 'Low',
-  }[biomarker.status] ?? '';
-
-  return (
-    <TouchableOpacity
-      style={styles.actionCard}
-      onPress={() => router.push(`/biomarker/${encodeURIComponent(biomarker.name)}` as any)}
-      activeOpacity={0.88}
-    >
-      {/* Header */}
-      <View style={styles.actionCardHeader}>
-        <Text style={styles.actionMarkerName}>{knowledge?.emoji ?? '🔬'} {displayName}</Text>
-        <View style={[styles.actionBadge, { backgroundColor: color + '20' }]}>
-          <Text style={[styles.actionBadgeText, { color }]}>{statusLabel}</Text>
-        </View>
-      </View>
-
-      {/* Value bar */}
-      <View style={styles.actionValueRow}>
-        <Text style={[styles.actionValue, { color }]}>
-          {biomarker.value} {biomarker.unit}
-        </Text>
-        {biomarker.referenceRange && (
-          <Text style={styles.actionRef}>
-            {language === 'es' ? 'Ref: ' : 'Ref: '}{biomarker.referenceRange} {biomarker.unit}
-          </Text>
-        )}
-      </View>
-
-      {/* Foods to eat */}
-      {foodsToEat && (
-        <View style={styles.actionRow}>
-          <View style={[styles.actionIconWrap, { backgroundColor: Colors.optimal10 }]}>
-            <Leaf size={14} color={Colors.optimal} />
-          </View>
-          <View style={styles.actionTextWrap}>
-            <Text style={[styles.actionLabel, { color: Colors.optimal }]}>{t('eatMore')}</Text>
-            <Text style={styles.actionBody}>{foodsToEat}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Foods to avoid */}
-      {foodsToAvoid && (
-        <View style={styles.actionRow}>
-          <View style={[styles.actionIconWrap, { backgroundColor: Colors.attention10 }]}>
-            <Text style={styles.actionReduceEmoji}>🚫</Text>
-          </View>
-          <View style={styles.actionTextWrap}>
-            <Text style={[styles.actionLabel, { color: Colors.attention }]}>{t('reduceIntake')}</Text>
-            <Text style={styles.actionBody}>{foodsToAvoid}</Text>
-          </View>
-        </View>
-      )}
-
-      {/* Exercise nudge */}
-      <View style={styles.actionRow}>
-        <View style={[styles.actionIconWrap, { backgroundColor: Colors.primary10 }]}>
-          <Dumbbell size={14} color={Colors.primary} />
-        </View>
-        <View style={styles.actionTextWrap}>
-          <Text style={[styles.actionLabel, { color: Colors.primary }]}>{t('doThis')}</Text>
-          <Text style={styles.actionBody}>{t('recExerciseBody')}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.actionTapHint}>
-        {language === 'es' ? 'Toca para más detalles →' : 'Tap for full details →'}
-      </Text>
-    </TouchableOpacity>
-  );
-}
 
 // ─── Mini ring ────────────────────────────────────────────────────────────────
 
@@ -396,6 +312,196 @@ function MiniRing({ score, size = 80 }: { score: number; size?: number }) {
   );
 }
 
+// ─── Health Plan section ─────────────────────────────────────────────────────
+
+function HealthPlanSection({ t, language }: {
+  t: ReturnType<typeof useT>; language: string;
+}) {
+  const healthGoals = useStore((s) => s.healthGoals);
+  const setHealthGoals = useStore((s) => s.setHealthGoals);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Set<HealthGoal>>(new Set());
+
+  const startEdit = () => {
+    setDraft(new Set(healthGoals));
+    setEditing(true);
+  };
+
+  const toggleGoal = (id: HealthGoal) => {
+    const next = new Set(draft);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setDraft(next);
+  };
+
+  const save = () => {
+    setHealthGoals(Array.from(draft));
+    setEditing(false);
+  };
+
+  // No goals set — prompt
+  if (healthGoals.length === 0 && !editing) {
+    return (
+      <View style={hpStyles.promptCard}>
+        <Text style={hpStyles.promptText}>{t('setGoalsPrompt')}</Text>
+        <TouchableOpacity style={hpStyles.addBtn} onPress={startEdit} activeOpacity={0.7}>
+          <Plus size={16} color={Colors.primaryForeground} />
+          <Text style={hpStyles.addBtnText}>{t('editGoals')}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={hpStyles.container}>
+      {/* Header */}
+      <View style={hpStyles.header}>
+        <Text style={hpStyles.title}>{t('yourHealthPlan')}</Text>
+        {!editing ? (
+          <TouchableOpacity onPress={startEdit} style={hpStyles.editBtn} activeOpacity={0.7}>
+            <Pencil size={14} color={Colors.primary} />
+            <Text style={hpStyles.editBtnText}>{t('editGoals')}</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity onPress={save} style={hpStyles.saveBtn} activeOpacity={0.7}>
+            <Check size={14} color={Colors.primaryForeground} />
+            <Text style={hpStyles.saveBtnText}>{t('saveGoals')}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* View mode — pills */}
+      {!editing && (
+        <View style={hpStyles.pillRow}>
+          {healthGoals.map((gId) => {
+            const goal = GOALS.find((g) => g.id === gId);
+            if (!goal) return null;
+            return (
+              <View key={gId} style={hpStyles.pill}>
+                <Text style={hpStyles.pillEmoji}>{goal.emoji}</Text>
+                <Text style={hpStyles.pillLabel}>{t(goal.labelKey)}</Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Edit mode — mini grid */}
+      {editing && (
+        <View style={hpStyles.grid}>
+          {GOALS.map((goal) => {
+            const selected = draft.has(goal.id);
+            return (
+              <TouchableOpacity
+                key={goal.id}
+                style={[hpStyles.gridItem, selected && hpStyles.gridItemSelected]}
+                activeOpacity={0.7}
+                onPress={() => toggleGoal(goal.id)}
+              >
+                <Text style={hpStyles.gridEmoji}>{goal.emoji}</Text>
+                <Text style={[hpStyles.gridLabel, selected && hpStyles.gridLabelSelected]}>
+                  {t(goal.labelKey)}
+                </Text>
+                {selected && (
+                  <View style={hpStyles.gridCheck}>
+                    <Check size={10} color={Colors.primaryForeground} strokeWidth={3} />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const hpStyles = StyleSheet.create({
+  container: { marginBottom: 20 },
+  header: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
+  },
+  title: {
+    fontFamily: Typography.families.display,
+    fontSize: 18, fontWeight: '800', color: Colors.foreground, letterSpacing: -0.3,
+  },
+  editBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10,
+    backgroundColor: Colors.primary10,
+  },
+  editBtnText: {
+    fontFamily: Typography.families.body,
+    fontSize: 12, fontWeight: '700', color: Colors.primary,
+  },
+  saveBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10,
+    backgroundColor: Colors.primary,
+  },
+  saveBtnText: {
+    fontFamily: Typography.families.body,
+    fontSize: 12, fontWeight: '700', color: Colors.primaryForeground,
+  },
+  pillRow: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+  },
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary10, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.primary + '25',
+  },
+  pillEmoji: { fontSize: 16 },
+  pillLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '600', color: Colors.primary,
+  },
+  // Edit grid
+  grid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
+  },
+  gridItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.surface, borderRadius: 14,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1.5, borderColor: 'transparent',
+  },
+  gridItemSelected: {
+    backgroundColor: Colors.primary10,
+    borderColor: Colors.primary,
+  },
+  gridEmoji: { fontSize: 16 },
+  gridLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 12, fontWeight: '600', color: Colors.foreground,
+  },
+  gridLabelSelected: { color: Colors.primary },
+  gridCheck: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  // Prompt (no goals)
+  promptCard: {
+    backgroundColor: Colors.surface, borderRadius: 18, padding: 20, marginBottom: 20,
+    alignItems: 'center', borderWidth: 1, borderColor: Colors.primary + '15',
+  },
+  promptText: {
+    fontFamily: Typography.families.body,
+    fontSize: 14, color: Colors.mutedForeground, textAlign: 'center',
+    lineHeight: 21, marginBottom: 14,
+  },
+  addBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primary, borderRadius: 12,
+    paddingHorizontal: 18, paddingVertical: 10,
+  },
+  addBtnText: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '700', color: Colors.primaryForeground,
+  },
+});
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function TrendsScreen() {
@@ -403,6 +509,11 @@ export default function TrendsScreen() {
   const t = useT();
   const sessions = useStore((s) => s.sessions);
   const language = useStore((s) => s.language);
+  const userAge = useStore((s) => s.age);
+  const achievements = useStore((s) => s.achievements);
+  const xp = useStore((s) => s.xp);
+  const activeWeeks = useStore((s) => s.activeWeeks);
+  const healthScore = useStore((s) => s.healthScore);
   const hasSessions = sessions.length > 0;
 
   const latest = sessions[0];
@@ -419,11 +530,6 @@ export default function TrendsScreen() {
     : null;
   const TrendIcon = delta === null ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
   const trendColor = delta === null ? Colors.outline : delta > 0 ? Colors.optimal : delta < 0 ? Colors.attention : Colors.outline;
-
-  // Out-of-range markers for action cards
-  const outOfRange = hasSessions
-    ? latest.biomarkers.filter(b => b.status !== 'normal')
-    : [];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -492,15 +598,57 @@ export default function TrendsScreen() {
               </View>
             )}
 
-            {/* ── Only one test prompt ── */}
-            {!previous && (
-              <View style={styles.onlyOneCard}>
-                <TrendingUp size={20} color={Colors.primary} />
-                <Text style={styles.onlyOneText}>{t('onlyOneTest')}</Text>
-              </View>
-            )}
+            {/* ── Improvement Simulation ── */}
+            {(() => {
+              const oor = latest.biomarkers.filter(b => b.status !== 'normal');
+              if (oor.length === 0) return null;
+              const topMarkers = oor.slice(0, 3);
+              const markerNames = topMarkers.map(b => b.name);
+              const age = parseInt(userAge) || 40;
+              const sim = simulateImprovement(latest.biomarkers, markerNames, age);
+              if (sim.scoreDelta <= 0) return null;
 
-            {/* ── Doctor Questions ── */}
+              const markerDisplay = topMarkers
+                .map(b => getBiomarkerKnowledge(b.name)?.simpleName?.[language as 'en' | 'es'] ?? b.name)
+                .join(', ');
+
+              return (
+                <View style={styles.simCard}>
+                  <Text style={styles.simTitle}>{t('simTitle')}</Text>
+                  <Text style={styles.simBody}>
+                    {t('simBody', {
+                      markers: markerDisplay,
+                      current: String(sim.currentScore),
+                      projected: String(sim.projectedScore),
+                    })}
+                  </Text>
+                  <View style={styles.simRings}>
+                    <View style={styles.simRingWrap}>
+                      <MiniRing score={sim.currentScore} size={70} />
+                      <Text style={styles.simRingLabel}>
+                        {language === 'es' ? 'Actual' : 'Current'}
+                      </Text>
+                    </View>
+                    <View style={styles.simArrow}>
+                      <ArrowUp size={20} color={Colors.optimal} style={{ transform: [{ rotate: '90deg' }] }} />
+                    </View>
+                    <View style={styles.simRingWrap}>
+                      <MiniRing score={sim.projectedScore} size={70} />
+                      <Text style={styles.simRingLabel}>
+                        {language === 'es' ? 'Proyectado' : 'Projected'}
+                      </Text>
+                    </View>
+                    <View style={[styles.simDeltaBadge, { backgroundColor: Colors.optimal10 }]}>
+                      <Text style={[styles.simDeltaText, { color: Colors.optimal }]}>
+                        +{sim.scoreDelta}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })()}
+
+            {/* ── Doctor Questions (horizontal swipeable) ── */}
             {(() => {
               const questions = generateDoctorQuestions(latest.biomarkers);
               if (questions.length === 0) return null;
@@ -513,73 +661,74 @@ export default function TrendsScreen() {
                       <Text style={styles.sectionSub}>{t('doctorQuestionsSubtitle')}</Text>
                     </View>
                   </View>
-                  {questions.map((q, i) => (
-                    <DoctorQuestionCard
-                      key={i}
-                      question={q.question[language as 'en' | 'es']}
-                      marker={q.marker}
-                      lang={language}
-                    />
-                  ))}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorScroll}>
+                    <View style={styles.doctorScrollRow}>
+                      {questions.map((q, i) => (
+                        <DoctorQuestionCard
+                          key={i}
+                          question={q.question[language as 'en' | 'es']}
+                          marker={q.marker}
+                          lang={language}
+                        />
+                      ))}
+                    </View>
+                  </ScrollView>
                 </View>
               );
             })()}
 
-            {/* ── ACTIONS ── */}
-            {outOfRange.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionTitleRow}>
-                  <Dumbbell size={20} color={Colors.primary} />
-                  <View>
-                    <Text style={styles.sectionTitle}>{t('actionsTitle')}</Text>
-                    <Text style={styles.sectionSub}>{t('actionsSub')}</Text>
-                  </View>
-                </View>
-                {outOfRange.slice(0, 4).map(b => (
-                  <ActionCard key={b.name} biomarker={b} language={language} t={t} />
-                ))}
-                {outOfRange.length === 0 && (
-                  <Text style={styles.noActionsText}>{t('noActionsYet')}</Text>
-                )}
-              </View>
-            )}
-
-            {/* ── Test history ── */}
-            {sessions.length > 1 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>
-                  {language === 'es' ? '🗂 Historial' : '🗂 History'}
+            {/* ── Badges ── */}
+            <View style={styles.section}>
+              <View style={styles.achHeader}>
+                <Trophy size={18} color={Colors.gold} />
+                <Text style={styles.sectionTitle}>{t('badgesTitle')}</Text>
+                <Text style={styles.achCount}>
+                  {achievements.length}/{ACHIEVEMENTS.length}
                 </Text>
-                {sessions.map((s, i) => (
-                  <TouchableOpacity
-                    key={s.id}
-                    style={styles.historyRow}
-                    activeOpacity={0.8}
-                    onPress={() => router.push(`/test/${s.id}` as any)}
-                  >
-                    <View style={[styles.historyScore, { backgroundColor: scoreColor(s.healthScore) + '15' }]}>
-                      <Text style={[styles.historyScoreText, { color: scoreColor(s.healthScore) }]}>
-                        {s.healthScore}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.historyLabel}>{s.label}</Text>
-                      <Text style={styles.historyMeta}>
-                        {formatDate(s.date, language)} · {s.biomarkers.length} {t('markers').toLowerCase()}
-                      </Text>
-                    </View>
-                    {i === 0 && (
-                      <View style={styles.latestBadge}>
-                        <Text style={styles.latestBadgeText}>
-                          {language === 'es' ? 'Último' : 'Latest'}
-                        </Text>
-                      </View>
-                    )}
-                    <ChevronRight size={16} color={Colors.outline} />
-                  </TouchableOpacity>
-                ))}
               </View>
-            )}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.achRow}>
+                  {ACHIEVEMENTS.map(a => (
+                    <AchievementBadge
+                      key={a.id}
+                      id={a.id}
+                      name={a.name[language as 'en' | 'es']}
+                      icon={a.icon}
+                      unlocked={achievements.includes(a.id)}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+
+            {/* ── Gamification Stats ── */}
+            <View style={styles.section}>
+              <View style={styles.gamifHeader}>
+                <Trophy size={20} color={Colors.gold} />
+                <Text style={styles.sectionTitle}>{t('yourProgressSection')}</Text>
+              </View>
+              <XPBar xp={xp} language={language} />
+              <View style={{ height: 12 }} />
+              <View style={styles.gamifStatsRow}>
+                <View style={styles.gamifStatBox}>
+                  <Text style={styles.gamifStatNum}>{achievements.length}/{ACHIEVEMENTS.length}</Text>
+                  <Text style={styles.gamifStatLabel}>{t('achievementsTitle')}</Text>
+                </View>
+                <View style={styles.gamifStatBox}>
+                  <Text style={styles.gamifStatNum}>{activeWeeks}</Text>
+                  <Text style={styles.gamifStatLabel}>{t('activeStreakLabel', { n: activeWeeks })}</Text>
+                </View>
+                <View style={styles.gamifStatBox}>
+                  <Text style={[styles.gamifStatNum, { color: getScoreLevel(healthScore).color }]}>
+                    {getScoreLevel(healthScore).name[language as 'en' | 'es']}
+                  </Text>
+                  <Text style={styles.gamifStatLabel}>{language === 'es' ? 'Nivel' : 'Level'}</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* ── Health Plan ── */}
+            <HealthPlanSection t={t} language={language} />
           </>
         )}
       </ScrollView>
@@ -695,9 +844,11 @@ const styles = StyleSheet.create({
   trendRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trendValue: { fontFamily: Typography.families.body, fontSize: 13, fontWeight: '700' },
 
-  // Doctor cards
+  // Doctor cards (horizontal swipeable)
+  doctorScroll: { marginBottom: 4 },
+  doctorScrollRow: { flexDirection: 'row', gap: 12, paddingRight: 20 },
   doctorCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 10,
+    backgroundColor: '#fff', borderRadius: 18, padding: 16, width: 280,
     borderLeftWidth: 3, borderLeftColor: Colors.primary,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
@@ -725,64 +876,6 @@ const styles = StyleSheet.create({
   shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end' },
   shareBtnText: { fontFamily: Typography.families.body, fontSize: 12, fontWeight: '700' },
 
-  // Action cards
-  actionCard: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 16, marginBottom: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 2,
-  },
-  actionCardHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6,
-  },
-  actionMarkerName: {
-    fontFamily: Typography.families.display,
-    fontSize: 16, fontWeight: '800', color: Colors.foreground,
-  },
-  actionBadge: {
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
-  },
-  actionBadgeText: {
-    fontFamily: Typography.families.body,
-    fontSize: 10, fontWeight: '700',
-  },
-  actionValueRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingBottom: 12, marginBottom: 8,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
-  actionValue: {
-    fontFamily: Typography.families.display,
-    fontSize: 22, fontWeight: '800',
-  },
-  actionRef: {
-    fontFamily: Typography.families.body,
-    fontSize: 11, color: Colors.outline,
-  },
-  actionRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 10,
-  },
-  actionIconWrap: {
-    width: 30, height: 30, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  actionReduceEmoji: { fontSize: 14 },
-  actionTextWrap: { flex: 1 },
-  actionLabel: {
-    fontFamily: Typography.families.body,
-    fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 2,
-  },
-  actionBody: {
-    fontFamily: Typography.families.body,
-    fontSize: 12, color: Colors.foreground, lineHeight: 18,
-  },
-  actionTapHint: {
-    fontFamily: Typography.families.body,
-    fontSize: 10, color: Colors.outline, textAlign: 'right', marginTop: 10,
-  },
-  noActionsText: {
-    fontFamily: Typography.families.body,
-    fontSize: 14, color: Colors.mutedForeground, textAlign: 'center', padding: 20,
-  },
-
   // History
   historyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -796,14 +889,65 @@ const styles = StyleSheet.create({
   latestBadge: { backgroundColor: Colors.primary10, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   latestBadgeText: { fontFamily: Typography.families.body, fontSize: 10, fontWeight: '700', color: Colors.primary },
 
-  onlyOneCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Colors.primary10, borderRadius: 14,
-    padding: 14, marginBottom: 24,
+  // Improvement Simulation
+  simCard: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 24,
+    borderWidth: 1, borderColor: Colors.optimal + '25',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
   },
-  onlyOneText: { fontFamily: Typography.families.body, fontSize: 13, color: Colors.primary, flex: 1, lineHeight: 18 },
+  simTitle: {
+    fontFamily: Typography.families.display,
+    fontSize: 16, fontWeight: '800', color: Colors.foreground, marginBottom: 6,
+  },
+  simBody: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, color: Colors.mutedForeground, lineHeight: 19, marginBottom: 16,
+  },
+  simRings: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
+  },
+  simRingWrap: { alignItems: 'center', gap: 6 },
+  simRingLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 11, color: Colors.outline, fontWeight: '600',
+  },
+  simArrow: { paddingBottom: 20 },
+  simDeltaBadge: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
+    position: 'absolute', right: 0, top: 0,
+  },
+  simDeltaText: {
+    fontFamily: Typography.families.display,
+    fontSize: 16, fontWeight: '900',
+  },
 
   emptyState: { alignItems: 'center', paddingTop: 64, paddingHorizontal: 24 },
   emptyTitle: { fontFamily: Typography.families.display, fontSize: 22, fontWeight: '700', color: Colors.foreground, marginBottom: 12 },
   emptySub: { fontFamily: Typography.families.body, fontSize: 15, color: Colors.mutedForeground, textAlign: 'center', lineHeight: 24 },
+
+  // Badges
+  achHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  achCount: {
+    fontFamily: Typography.families.body, fontSize: 12, color: Colors.mutedForeground, marginLeft: 'auto',
+  },
+  achRow: { flexDirection: 'row', gap: 10, paddingRight: 12 },
+
+  // Gamification stats
+  gamifHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  gamifStatsRow: { flexDirection: 'row', gap: 8 },
+  gamifStatBox: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12,
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03, shadowRadius: 4, elevation: 1,
+  },
+  gamifStatNum: {
+    fontFamily: Typography.families.display,
+    fontSize: 16, fontWeight: '800', color: Colors.primary, marginBottom: 2,
+  },
+  gamifStatLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 10, color: Colors.mutedForeground, textAlign: 'center',
+  },
 });

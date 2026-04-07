@@ -21,6 +21,12 @@ export interface BiomarkerKnowledge {
   whyItMatters: BilingualText;
   foodsToEat?: BilingualText;    // plain text: "spinach, lentils, salmon"
   foodsToAvoid?: BilingualText;  // plain text: "soda, white bread, fried food"
+  optimalRange?: {
+    male?: { min: number; max: number };
+    female?: { min: number; max: number };
+    general?: { min: number; max: number };
+  };
+  sampleType: 'blood' | 'urine' | 'stool' | 'saliva';
   reviewEveryMonths: number;
 }
 
@@ -64,6 +70,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'sodas, candy, white bread, pastries, fruit juice, sugary cereals',
       es: 'refrescos, dulces, pan blanco, pasteles, jugo de fruta, cereales azucarados',
     },
+    optimalRange: { general: { min: 72, max: 85 } },
+    sampleType: 'blood',
     reviewEveryMonths: 6,
   },
 
@@ -104,6 +112,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'sodas, candy, white bread, pastries, fruit juice, sugary cereals',
       es: 'refrescos, dulces, pan blanco, pasteles, jugo de fruta, cereales azucarados',
     },
+    optimalRange: { general: { min: 72, max: 85 } },
+    sampleType: 'blood',
     reviewEveryMonths: 6,
   },
 
@@ -144,6 +154,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'refined carbs, sugary drinks, white rice, candy, processed snacks',
       es: 'carbohidratos refinados, bebidas azucaradas, arroz blanco, dulces, snacks procesados',
     },
+    optimalRange: { general: { min: 4.0, max: 5.3 } },
+    sampleType: 'blood',
     reviewEveryMonths: 3,
   },
 
@@ -184,6 +196,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'refined carbs, sugary drinks, white rice, candy',
       es: 'carbohidratos refinados, bebidas azucaradas, arroz blanco, dulces',
     },
+    optimalRange: { general: { min: 4.0, max: 5.3 } },
+    sampleType: 'blood',
     reviewEveryMonths: 3,
   },
 
@@ -225,6 +239,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'fried food, red meat, full-fat dairy, processed foods, trans fats',
       es: 'frituras, carnes rojas, lácteos enteros, alimentos procesados, grasas trans',
     },
+    optimalRange: { general: { min: 150, max: 200 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -265,6 +281,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'red meat, butter, cheese, fried food, full-fat dairy, processed meats, coconut oil',
       es: 'carnes rojas, mantequilla, queso, frituras, lácteos enteros, embutidos, aceite de coco',
     },
+    optimalRange: { general: { min: 0, max: 100 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -305,6 +323,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'trans fats, fried food, processed snacks, refined carbs, smoking (stop!)',
       es: 'grasas trans, frituras, snacks procesados, carbohidratos refinados',
     },
+    optimalRange: {
+      male: { min: 50, max: 90 },
+      female: { min: 60, max: 90 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -345,6 +368,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'alcohol, sodas, sugar, white bread, refined carbs, fruit juice, candy',
       es: 'alcohol, refrescos, azúcar, pan blanco, carbohidratos refinados, jugo de fruta, dulces',
     },
+    optimalRange: { general: { min: 0, max: 100 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -386,6 +411,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'excess protein, processed meats, salt, NSAIDs (pain meds)',
       es: 'exceso de proteína, carnes procesadas, sal, antiinflamatorios en exceso',
     },
+    optimalRange: {
+      male: { min: 0.7, max: 1.2 },
+      female: { min: 0.6, max: 1.0 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -426,6 +456,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'red meat, organ meat, shellfish, alcohol (especially beer), fructose drinks',
       es: 'carnes rojas, vísceras, mariscos, alcohol (especialmente cerveza), bebidas con fructosa',
     },
+    optimalRange: {
+      male: { min: 3.5, max: 6.0 },
+      female: { min: 2.5, max: 5.5 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -467,6 +502,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'raw cruciferous vegetables in excess (for hypothyroid), soy in excess',
       es: 'exceso de vegetales crucíferos crudos (en hipotiroidismo), exceso de soya',
     },
+    optimalRange: { general: { min: 1.0, max: 2.5 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -508,6 +545,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'excess coffee and tea with meals (blocks iron absorption), calcium-rich foods at same time as iron',
       es: 'exceso de café y té con las comidas (bloquea la absorción de hierro)',
     },
+    optimalRange: {
+      male: { min: 14.0, max: 16.0 },
+      female: { min: 12.0, max: 14.0 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -540,6 +582,7 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'White blood cells are your body\'s army against bacteria, viruses, and other threats. Abnormal levels can indicate infection, inflammation, or in rare cases, bone marrow issues.',
       es: 'Los leucocitos son los "soldados" de tu sistema inmune. Niveles anormales pueden indicar infección, inflamación, o en casos extremos, problemas en la médula ósea.',
     },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -572,6 +615,7 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'White blood cells are your first line of defense against bacteria, viruses, and other pathogens.',
       es: 'Los glóbulos blancos son la primera línea de defensa contra bacterias, virus y otros patógenos.',
     },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -604,6 +648,7 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'Platelets are essential for blood clotting when you have a wound. Too few = bleeding risk. Too many = clot risk. Both extremes need medical attention.',
       es: 'Las plaquetas son esenciales para que la sangre coagule cuando hay una herida. Muy pocas o muy muchas pueden causar problemas serios.',
     },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -645,6 +690,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'alcohol, processed foods, excess sugar, high-fat foods',
       es: 'alcohol, alimentos procesados, exceso de azúcar, alimentos muy grasos',
     },
+    optimalRange: { general: { min: 10, max: 26 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -685,6 +732,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'alcohol, processed foods, fried foods, excess sugar, high-fructose corn syrup',
       es: 'alcohol, alimentos procesados, frituras, exceso de azúcar',
     },
+    optimalRange: { general: { min: 10, max: 26 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -725,6 +774,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'alcohol (main culprit), fried foods, excess sugar',
       es: 'alcohol (principal culpable), frituras, exceso de azúcar',
     },
+    optimalRange: {
+      male: { min: 10, max: 30 },
+      female: { min: 8, max: 25 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -766,6 +820,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'nothing specific — mainly focus on getting more sun and possibly supplementing',
       es: 'nada específico — enfócate en obtener más sol y posiblemente suplementar',
     },
+    optimalRange: { general: { min: 40, max: 60 } },
+    sampleType: 'blood',
     reviewEveryMonths: 6,
   },
 
@@ -806,6 +862,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'nothing specific — if deficient, you likely need a supplement (B12 shots or pills)',
       es: 'nada específico — si hay deficiencia, probablemente necesitas un suplemento',
     },
+    optimalRange: { general: { min: 500, max: 1000 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -846,6 +904,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'coffee and tea with meals, calcium supplements at same time as iron, excess fiber',
       es: 'café y té con las comidas, suplementos de calcio al mismo tiempo que hierro',
     },
+    optimalRange: {
+      male: { min: 50, max: 150 },
+      female: { min: 30, max: 100 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 6,
   },
 
@@ -887,6 +950,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'processed foods, sugar, fried food, refined carbs, alcohol, trans fats',
       es: 'alimentos procesados, azúcar, frituras, carbohidratos refinados, alcohol, grasas trans',
     },
+    optimalRange: { general: { min: 0, max: 1.0 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -927,6 +992,8 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'processed foods, sugar, fried food, trans fats',
       es: 'alimentos procesados, azúcar, frituras, grasas trans',
     },
+    optimalRange: { general: { min: 0, max: 1.0 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -968,6 +1035,11 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'alcohol, soy in excess, processed foods, trans fats',
       es: 'alcohol, exceso de soya, alimentos procesados, grasas trans',
     },
+    optimalRange: {
+      male: { min: 500, max: 900 },
+      female: { min: 15, max: 70 },
+    },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
 
@@ -1008,18 +1080,1343 @@ const K: Record<string, BiomarkerKnowledge> = {
       en: 'caffeine in excess, alcohol, sugar, processed foods, skipping meals',
       es: 'exceso de cafeína, alcohol, azúcar, alimentos procesados, saltarse comidas',
     },
+    optimalRange: { general: { min: 6, max: 12 } },
+    sampleType: 'blood',
     reviewEveryMonths: 12,
   },
+
+  // ── Prostate ──────────────────────────────────────────────────────────────
+  'psa total': {
+    simpleName: { en: 'Prostate Marker (PSA)', es: 'Marcador prostático (PSA)' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Prostate-Specific Antigen — a protein produced by the prostate gland',
+      es: 'Antígeno Prostático Específico — proteína producida por la próstata',
+    },
+    messages: {
+      normal: {
+        en: 'Your PSA is in a healthy range. No signs of prostate issues.',
+        es: 'Tu PSA está en rango normal. Sin señales de problemas prostáticos.',
+      },
+      borderline: {
+        en: 'Your PSA is slightly elevated — could be from an enlarged prostate or inflammation. Worth monitoring.',
+        es: 'Tu PSA está algo elevado — puede ser hiperplasia benigna o inflamación. Conviene monitorear.',
+      },
+      high: {
+        en: 'Your PSA is elevated. This needs further evaluation by your doctor to rule out prostate conditions.',
+        es: 'Tu PSA está elevado. Requiere evaluación médica para descartar problemas prostáticos.',
+      },
+      low: {
+        en: 'Your PSA is very low — that is generally a good sign for prostate health.',
+        es: 'Tu PSA es muy bajo — generalmente es buena señal para la salud prostática.',
+      },
+    },
+    whyItMatters: {
+      en: 'PSA is the primary screening marker for prostate health in men. Elevated levels can indicate benign enlargement, infection, or in some cases prostate cancer. Early detection saves lives.',
+      es: 'El PSA es el principal marcador de salud prostática. Niveles elevados pueden indicar hiperplasia benigna, infección o en algunos casos cáncer de próstata. La detección temprana salva vidas.',
+    },
+    foodsToEat: {
+      en: 'tomatoes (lycopene), broccoli, green tea, pomegranate, fatty fish, walnuts',
+      es: 'tomates (licopeno), brócoli, té verde, granada, pescado graso, nueces',
+    },
+    foodsToAvoid: {
+      en: 'excess red meat, high-fat dairy, processed meats, excess calcium supplements',
+      es: 'exceso de carne roja, lácteos altos en grasa, carnes procesadas, exceso de suplementos de calcio',
+    },
+    optimalRange: { male: { min: 0, max: 2.5 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'psa libre': {
+    simpleName: { en: 'Free PSA (Ratio)', es: 'PSA Libre (Proporción)' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'The proportion of unbound PSA — helps distinguish benign vs concerning prostate changes',
+      es: 'Proporción de PSA no unido a proteínas — ayuda a diferenciar cambios prostáticos benignos de preocupantes',
+    },
+    messages: {
+      normal: {
+        en: 'Your free PSA ratio is reassuring — suggests benign prostate changes if PSA is elevated.',
+        es: 'Tu proporción de PSA libre es tranquilizadora — sugiere cambios prostáticos benignos.',
+      },
+      borderline: {
+        en: 'Your free PSA ratio is in an intermediate zone. Follow up with your doctor for further evaluation.',
+        es: 'Tu proporción de PSA libre está en zona intermedia. Consulta a tu médico para seguimiento.',
+      },
+      high: {
+        en: 'A high free PSA ratio is usually reassuring — it suggests benign prostate enlargement rather than cancer.',
+        es: 'Una proporción alta de PSA libre suele ser tranquilizadora — sugiere agrandamiento benigno.',
+      },
+      low: {
+        en: 'A low free PSA ratio may warrant further investigation. Discuss with your urologist.',
+        es: 'Una proporción baja de PSA libre puede requerir más estudios. Consulta a tu urólogo.',
+      },
+    },
+    whyItMatters: {
+      en: 'Free PSA helps refine risk when total PSA is borderline (4-10). A higher ratio suggests benign enlargement; a lower ratio may suggest further testing is needed.',
+      es: 'El PSA libre ayuda a refinar el riesgo cuando el PSA total está en zona gris (4-10). Una proporción más alta sugiere agrandamiento benigno.',
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Electrolytes & Minerals ───────────────────────────────────────────────
+  'calcio': {
+    simpleName: { en: 'Calcium', es: 'Calcio' },
+    emoji: '🦴',
+    whatItMeasures: {
+      en: 'The level of calcium in your blood — essential for bones, muscles, and nerves',
+      es: 'Nivel de calcio en sangre — esencial para huesos, músculos y nervios',
+    },
+    messages: {
+      normal: {
+        en: 'Your calcium is in a healthy range. Bones, muscles, and nerves are well-supplied.',
+        es: 'Tu calcio está en buen rango. Huesos, músculos y nervios bien abastecidos.',
+      },
+      borderline: {
+        en: 'Your calcium is slightly off range. Check vitamin D levels and parathyroid function.',
+        es: 'Tu calcio está algo fuera del rango. Revisa vitamina D y función paratiroidea.',
+      },
+      high: {
+        en: 'Your calcium is elevated (hypercalcemia). This can affect your heart and kidneys. See your doctor.',
+        es: 'Tu calcio está elevado (hipercalcemia). Puede afectar corazón y riñones. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your calcium is low (hypocalcemia). This can cause muscle cramps and tingling. See your doctor.',
+        es: 'Tu calcio está bajo (hipocalcemia). Puede causar calambres y hormigueo. Consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Calcium is critical for bone strength, muscle contraction, nerve signaling, and heart rhythm. Both high and low levels can have serious consequences.',
+      es: 'El calcio es esencial para huesos fuertes, contracción muscular, señalización nerviosa y ritmo cardíaco. Tanto niveles altos como bajos pueden tener consecuencias serias.',
+    },
+    foodsToEat: {
+      en: 'dairy, sardines, broccoli, kale, fortified plant milks, almonds, tofu',
+      es: 'lácteos, sardinas, brócoli, kale, leches vegetales fortificadas, almendras, tofu',
+    },
+    foodsToAvoid: {
+      en: 'excess salt, excess caffeine, excess soda (phosphoric acid leaches calcium)',
+      es: 'exceso de sal, exceso de cafeína, exceso de refrescos (el ácido fosfórico elimina calcio)',
+    },
+    optimalRange: { general: { min: 8.5, max: 10.2 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'magnesio': {
+    simpleName: { en: 'Magnesium', es: 'Magnesio' },
+    emoji: '✨',
+    whatItMeasures: {
+      en: 'Blood magnesium level — involved in 300+ enzyme reactions in your body',
+      es: 'Nivel de magnesio en sangre — participa en más de 300 reacciones enzimáticas',
+    },
+    messages: {
+      normal: {
+        en: 'Your magnesium is in a healthy range. Muscles, nerves, and energy production are well-supported.',
+        es: 'Tu magnesio está en buen rango. Músculos, nervios y producción de energía bien respaldados.',
+      },
+      borderline: {
+        en: 'Your magnesium is slightly low. Try adding more nuts, seeds, and leafy greens to your diet.',
+        es: 'Tu magnesio está algo bajo. Agrega más nueces, semillas y verduras de hoja a tu dieta.',
+      },
+      high: {
+        en: 'Your magnesium is elevated — usually from supplements or kidney issues. Check with your doctor.',
+        es: 'Tu magnesio está elevado — usualmente por suplementos o problemas renales. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your magnesium is low. This can cause muscle cramps, fatigue, and irregular heartbeat.',
+        es: 'Tu magnesio está bajo. Puede causar calambres, fatiga y arritmias. Considera suplementar.',
+      },
+    },
+    whyItMatters: {
+      en: 'Magnesium is needed for muscle and nerve function, blood sugar control, and bone health. Deficiency is very common and linked to insomnia, anxiety, and muscle cramps.',
+      es: 'El magnesio es necesario para función muscular, nerviosa, control de azúcar y salud ósea. La deficiencia es muy común y se asocia con insomnio, ansiedad y calambres.',
+    },
+    foodsToEat: {
+      en: 'dark chocolate, avocado, nuts, seeds, spinach, bananas, whole grains',
+      es: 'chocolate negro, aguacate, nueces, semillas, espinaca, plátanos, granos enteros',
+    },
+    foodsToAvoid: {
+      en: 'excess alcohol, excess caffeine, processed foods (deplete magnesium)',
+      es: 'exceso de alcohol, exceso de cafeína, alimentos procesados (agotan magnesio)',
+    },
+    optimalRange: { general: { min: 1.8, max: 2.4 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'fósforo': {
+    simpleName: { en: 'Phosphorus', es: 'Fósforo' },
+    emoji: '🦴',
+    whatItMeasures: {
+      en: 'Blood phosphorus level — works with calcium for bone and energy metabolism',
+      es: 'Nivel de fósforo en sangre — trabaja con el calcio para huesos y metabolismo energético',
+    },
+    messages: {
+      normal: {
+        en: 'Your phosphorus is in a healthy range. Bone and energy metabolism are on track.',
+        es: 'Tu fósforo está en buen rango. Metabolismo óseo y energético en buen estado.',
+      },
+      borderline: {
+        en: 'Your phosphorus is slightly off. Worth checking kidney function and calcium levels.',
+        es: 'Tu fósforo está algo fuera del rango. Conviene revisar función renal y calcio.',
+      },
+      high: {
+        en: 'Your phosphorus is elevated — can be related to kidney issues or excess intake. See your doctor.',
+        es: 'Tu fósforo está elevado — puede relacionarse con problemas renales. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your phosphorus is low. This can affect bones and energy levels. Talk to your doctor.',
+        es: 'Tu fósforo está bajo. Puede afectar huesos y energía. Consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Phosphorus works alongside calcium to build strong bones and teeth. It also plays a key role in how your body stores and uses energy (ATP).',
+      es: 'El fósforo trabaja junto al calcio para construir huesos y dientes fuertes. También es clave en cómo el cuerpo almacena y usa energía (ATP).',
+    },
+    foodsToEat: {
+      en: 'dairy, meat, fish, eggs, nuts, beans, whole grains',
+      es: 'lácteos, carne, pescado, huevos, nueces, frijoles, granos enteros',
+    },
+    foodsToAvoid: {
+      en: 'excess phosphorus additives in processed foods and sodas',
+      es: 'exceso de aditivos de fósforo en alimentos procesados y refrescos',
+    },
+    optimalRange: { general: { min: 2.5, max: 4.5 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'potasio': {
+    simpleName: { en: 'Potassium', es: 'Potasio' },
+    emoji: '🍌',
+    whatItMeasures: {
+      en: 'Blood potassium level — essential for heart rhythm, muscles, and nerve signals',
+      es: 'Nivel de potasio en sangre — esencial para ritmo cardíaco, músculos y nervios',
+    },
+    messages: {
+      normal: {
+        en: 'Your potassium is in a healthy range. Heart, muscles, and nerves are well-balanced.',
+        es: 'Tu potasio está en buen rango. Corazón, músculos y nervios bien equilibrados.',
+      },
+      borderline: {
+        en: 'Your potassium is slightly off. This can affect heart rhythm — worth monitoring.',
+        es: 'Tu potasio está algo fuera del rango. Puede afectar el ritmo cardíaco — conviene monitorear.',
+      },
+      high: {
+        en: 'Your potassium is elevated (hyperkalemia). This can cause dangerous heart rhythm changes. See your doctor.',
+        es: 'Tu potasio está elevado (hiperkalemia). Puede causar arritmias peligrosas. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your potassium is low (hypokalemia). This can cause weakness, cramps, and heart issues.',
+        es: 'Tu potasio está bajo (hipokalemia). Puede causar debilidad, calambres y problemas cardíacos.',
+      },
+    },
+    whyItMatters: {
+      en: 'Potassium is critical for normal heart rhythm and muscle contraction. Both high and low levels can be dangerous and need medical attention.',
+      es: 'El potasio es crítico para el ritmo cardíaco normal y la contracción muscular. Tanto niveles altos como bajos pueden ser peligrosos.',
+    },
+    foodsToEat: {
+      en: 'bananas, potatoes, spinach, avocado, beans, yogurt, salmon',
+      es: 'plátanos, papas, espinaca, aguacate, frijoles, yogur, salmón',
+    },
+    foodsToAvoid: {
+      en: 'excess salt substitutes (high in potassium), excess supplementation without medical guidance',
+      es: 'exceso de sustitutos de sal (altos en potasio), suplementación sin guía médica',
+    },
+    optimalRange: { general: { min: 3.5, max: 5.0 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'sodio': {
+    simpleName: { en: 'Sodium', es: 'Sodio' },
+    emoji: '🧂',
+    whatItMeasures: {
+      en: 'Blood sodium level — regulates fluid balance, blood pressure, and nerve function',
+      es: 'Nivel de sodio en sangre — regula equilibrio de líquidos, presión arterial y función nerviosa',
+    },
+    messages: {
+      normal: {
+        en: 'Your sodium is in a healthy range. Fluid balance and blood pressure are well-regulated.',
+        es: 'Tu sodio está en buen rango. Equilibrio de líquidos y presión arterial bien regulados.',
+      },
+      borderline: {
+        en: 'Your sodium is slightly off. Stay well-hydrated and monitor your salt intake.',
+        es: 'Tu sodio está algo fuera del rango. Mantente bien hidratado y monitorea tu consumo de sal.',
+      },
+      high: {
+        en: 'Your sodium is elevated (hypernatremia). Usually from dehydration. Drink more water and see your doctor.',
+        es: 'Tu sodio está elevado (hipernatremia). Usualmente por deshidratación. Toma más agua y consulta a tu médico.',
+      },
+      low: {
+        en: 'Your sodium is low (hyponatremia). This can cause confusion and weakness. See your doctor.',
+        es: 'Tu sodio está bajo (hiponatremia). Puede causar confusión y debilidad. Consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Sodium is the main electrolyte controlling fluid balance outside your cells. Abnormal levels affect brain function, blood pressure, and can be life-threatening in extreme cases.',
+      es: 'El sodio es el principal electrolito que controla el equilibrio de líquidos fuera de las células. Niveles anormales afectan función cerebral y presión arterial.',
+    },
+    optimalRange: { general: { min: 136, max: 145 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Liver (additional) ────────────────────────────────────────────────────
+  'albúmina': {
+    simpleName: { en: 'Albumin (Liver Protein)', es: 'Albúmina (Proteína hepática)' },
+    emoji: '🟤',
+    whatItMeasures: {
+      en: 'The main protein made by your liver — reflects liver function and nutritional status',
+      es: 'Principal proteína producida por el hígado — refleja función hepática y estado nutricional',
+    },
+    messages: {
+      normal: {
+        en: 'Your albumin is healthy. Your liver is producing proteins well and your nutrition is good.',
+        es: 'Tu albúmina es normal. Tu hígado produce proteínas bien y tu nutrición es buena.',
+      },
+      borderline: {
+        en: 'Your albumin is slightly low. Could reflect mild liver stress or poor nutrition.',
+        es: 'Tu albúmina está algo baja. Puede reflejar estrés hepático leve o mala nutrición.',
+      },
+      high: {
+        en: 'Your albumin is elevated — usually from dehydration. Stay well-hydrated.',
+        es: 'Tu albúmina está alta — generalmente por deshidratación. Mantente hidratado.',
+      },
+      low: {
+        en: 'Your albumin is low — can indicate liver disease, kidney problems, or malnutrition. See your doctor.',
+        es: 'Tu albúmina está baja — puede indicar enfermedad hepática, problemas renales o malnutrición.',
+      },
+    },
+    whyItMatters: {
+      en: 'Albumin is the most abundant protein in blood, made by the liver. Low levels indicate the liver is struggling, or your body is losing protein through kidneys or inflammation.',
+      es: 'La albúmina es la proteína más abundante en sangre, producida por el hígado. Niveles bajos indican que el hígado está comprometido o que hay pérdida proteica.',
+    },
+    foodsToEat: {
+      en: 'eggs, lean meats, fish, dairy, legumes, tofu',
+      es: 'huevos, carnes magras, pescado, lácteos, legumbres, tofu',
+    },
+    foodsToAvoid: {
+      en: 'alcohol, excess processed foods',
+      es: 'alcohol, exceso de alimentos procesados',
+    },
+    optimalRange: { general: { min: 3.5, max: 5.0 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'bilirrubina total': {
+    simpleName: { en: 'Total Bilirubin', es: 'Bilirrubina Total' },
+    emoji: '🟡',
+    whatItMeasures: {
+      en: 'A yellow pigment from red blood cell breakdown — processed by the liver',
+      es: 'Pigmento amarillo de la degradación de glóbulos rojos — procesado por el hígado',
+    },
+    messages: {
+      normal: {
+        en: 'Your bilirubin is normal. Your liver is processing waste products efficiently.',
+        es: 'Tu bilirrubina es normal. Tu hígado procesa productos de desecho eficientemente.',
+      },
+      borderline: {
+        en: 'Your bilirubin is slightly elevated. Could be Gilbert syndrome (harmless) or mild liver stress.',
+        es: 'Tu bilirrubina está algo elevada. Puede ser síndrome de Gilbert (benigno) o estrés hepático leve.',
+      },
+      high: {
+        en: 'Your bilirubin is high — this can cause jaundice (yellowing). See your doctor to check liver and bile ducts.',
+        es: 'Tu bilirrubina está alta — puede causar ictericia. Consulta a tu médico para revisar hígado y vías biliares.',
+      },
+      low: {
+        en: 'Your bilirubin is very low — no clinical concern.',
+        es: 'Tu bilirrubina es muy baja — sin significado clínico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Bilirubin is a waste product from old red blood cells. Your liver processes it for excretion. Elevated levels can indicate liver disease, bile duct obstruction, or excessive red cell breakdown.',
+      es: 'La bilirrubina es un producto de desecho de glóbulos rojos viejos. El hígado la procesa para excretarla. Niveles elevados pueden indicar enfermedad hepática u obstrucción biliar.',
+    },
+    optimalRange: { general: { min: 0.1, max: 1.0 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'bilirrubina directa': {
+    simpleName: { en: 'Direct Bilirubin', es: 'Bilirrubina Directa' },
+    emoji: '🟡',
+    whatItMeasures: {
+      en: 'The portion of bilirubin already processed by the liver — indicates bile duct function',
+      es: 'Porción de bilirrubina ya procesada por el hígado — indica función de vías biliares',
+    },
+    messages: {
+      normal: {
+        en: 'Your direct bilirubin is normal. Bile ducts and liver processing are working well.',
+        es: 'Tu bilirrubina directa es normal. Vías biliares y procesamiento hepático funcionan bien.',
+      },
+      borderline: {
+        en: 'Your direct bilirubin is slightly elevated. Worth checking alongside total bilirubin and liver enzymes.',
+        es: 'Tu bilirrubina directa está algo elevada. Conviene revisarla junto con bilirrubina total y enzimas hepáticas.',
+      },
+      high: {
+        en: 'Your direct bilirubin is high — this often points to bile duct obstruction or liver disease. See your doctor.',
+        es: 'Tu bilirrubina directa está alta — puede indicar obstrucción biliar o enfermedad hepática. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your direct bilirubin is very low — no clinical concern.',
+        es: 'Tu bilirrubina directa es muy baja — sin significado clínico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Direct (conjugated) bilirubin has been processed by the liver. Elevated levels specifically suggest bile duct problems or liver disease affecting bile flow.',
+      es: 'La bilirrubina directa (conjugada) ha sido procesada por el hígado. Niveles elevados sugieren problemas en vías biliares o enfermedad hepática.',
+    },
+    optimalRange: { general: { min: 0, max: 0.3 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Blood / Hematology (additional) ───────────────────────────────────────
+  'eritrocitos': {
+    simpleName: { en: 'Red Blood Cells', es: 'Glóbulos Rojos' },
+    emoji: '🔴',
+    whatItMeasures: {
+      en: 'The number of red blood cells carrying oxygen throughout your body',
+      es: 'Cantidad de glóbulos rojos que transportan oxígeno por el cuerpo',
+    },
+    messages: {
+      normal: {
+        en: 'Your red blood cell count is healthy. Oxygen delivery to your tissues is on track.',
+        es: 'Tu conteo de glóbulos rojos es normal. El transporte de oxígeno funciona bien.',
+      },
+      borderline: {
+        en: 'Your red blood cells are slightly off. Check hemoglobin and iron levels for context.',
+        es: 'Tus eritrocitos están algo fuera del rango. Revisa hemoglobina y hierro para más contexto.',
+      },
+      high: {
+        en: 'Your red blood cells are elevated (polycythemia). This can thicken your blood. See your doctor.',
+        es: 'Tus eritrocitos están elevados (policitemia). Puede espesar la sangre. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your red blood cells are low — this means anemia. You may feel fatigued and short of breath.',
+        es: 'Tus eritrocitos están bajos — indica anemia. Puedes sentir fatiga y falta de aliento.',
+      },
+    },
+    whyItMatters: {
+      en: 'Red blood cells carry oxygen from your lungs to every tissue. Too few leads to anemia; too many can increase clot risk.',
+      es: 'Los glóbulos rojos llevan oxígeno de los pulmones a todos los tejidos. Muy pocos causan anemia; demasiados aumentan riesgo de coágulos.',
+    },
+    foodsToEat: {
+      en: 'iron-rich foods (red meat, spinach, lentils), vitamin B12, folate',
+      es: 'alimentos ricos en hierro (carne roja, espinaca, lentejas), vitamina B12, folato',
+    },
+    optimalRange: {
+      male: { min: 4.5, max: 5.5 },
+      female: { min: 4.0, max: 5.0 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'hematocrito': {
+    simpleName: { en: 'Hematocrit', es: 'Hematocrito' },
+    emoji: '🩸',
+    whatItMeasures: {
+      en: 'The percentage of your blood volume that is red blood cells',
+      es: 'Porcentaje del volumen sanguíneo ocupado por glóbulos rojos',
+    },
+    messages: {
+      normal: {
+        en: 'Your hematocrit is in a healthy range. Blood composition is well-balanced.',
+        es: 'Tu hematocrito está en buen rango. La composición de tu sangre está equilibrada.',
+      },
+      borderline: {
+        en: 'Your hematocrit is slightly off. Could be related to hydration or early anemia.',
+        es: 'Tu hematocrito está algo fuera del rango. Puede relacionarse con hidratación o anemia leve.',
+      },
+      high: {
+        en: 'Your hematocrit is elevated. This can indicate dehydration or polycythemia. See your doctor.',
+        es: 'Tu hematocrito está elevado. Puede indicar deshidratación o policitemia. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your hematocrit is low — consistent with anemia. Check hemoglobin and iron levels.',
+        es: 'Tu hematocrito está bajo — consistente con anemia. Revisa hemoglobina y hierro.',
+      },
+    },
+    whyItMatters: {
+      en: 'Hematocrit tells you how much of your blood is red blood cells vs. plasma. Low values indicate anemia; high values can increase clot risk.',
+      es: 'El hematocrito indica qué proporción de tu sangre son glóbulos rojos vs plasma. Valores bajos indican anemia; valores altos aumentan riesgo de coágulos.',
+    },
+    optimalRange: {
+      male: { min: 40, max: 50 },
+      female: { min: 36, max: 44 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'vcm': {
+    simpleName: { en: 'Red Cell Size (MCV)', es: 'Tamaño de glóbulos rojos (VCM)' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Mean Corpuscular Volume — the average size of your red blood cells',
+      es: 'Volumen Corpuscular Medio — tamaño promedio de tus glóbulos rojos',
+    },
+    messages: {
+      normal: {
+        en: 'Your red blood cells are normal size. This is a good sign for nutrient status.',
+        es: 'Tus glóbulos rojos tienen tamaño normal. Buena señal de estado nutricional.',
+      },
+      borderline: {
+        en: 'Your red cell size is slightly off. Check B12, folate, and iron levels.',
+        es: 'El tamaño de tus glóbulos rojos está algo fuera del rango. Revisa B12, folato y hierro.',
+      },
+      high: {
+        en: 'Your red cells are larger than normal (macrocytic). Often due to B12 or folate deficiency. See your doctor.',
+        es: 'Tus glóbulos rojos son más grandes de lo normal (macrocitosis). Frecuente por falta de B12 o folato.',
+      },
+      low: {
+        en: 'Your red cells are smaller than normal (microcytic). Often due to iron deficiency.',
+        es: 'Tus glóbulos rojos son más pequeños de lo normal (microcitosis). Frecuente por falta de hierro.',
+      },
+    },
+    whyItMatters: {
+      en: 'MCV helps classify the type of anemia. Small cells usually mean iron deficiency. Large cells usually mean B12 or folate deficiency.',
+      es: 'El VCM ayuda a clasificar el tipo de anemia. Células pequeñas suelen indicar falta de hierro. Células grandes suelen indicar falta de B12 o folato.',
+    },
+    optimalRange: { general: { min: 80, max: 96 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'hcm': {
+    simpleName: { en: 'Hemoglobin per Cell (MCH)', es: 'Hemoglobina por célula (HCM)' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Mean Corpuscular Hemoglobin — the average amount of hemoglobin per red blood cell',
+      es: 'Hemoglobina Corpuscular Media — cantidad promedio de hemoglobina por glóbulo rojo',
+    },
+    messages: {
+      normal: {
+        en: 'Your hemoglobin content per cell is normal. Red cells are well-loaded with oxygen carriers.',
+        es: 'Tu HCM es normal. Tus glóbulos rojos tienen buena carga de hemoglobina.',
+      },
+      borderline: {
+        en: 'Your MCH is slightly off. Often parallels MCV changes — check iron and B12.',
+        es: 'Tu HCM está algo fuera del rango. Suele acompañar cambios en VCM — revisa hierro y B12.',
+      },
+      high: {
+        en: 'Your MCH is elevated — red cells carry more hemoglobin than usual. Often linked to B12/folate deficiency.',
+        es: 'Tu HCM está elevada — puede relacionarse con deficiencia de B12 o folato.',
+      },
+      low: {
+        en: 'Your MCH is low — red cells carry less hemoglobin. Often linked to iron deficiency.',
+        es: 'Tu HCM está baja — tus glóbulos rojos llevan menos hemoglobina. Frecuente en deficiencia de hierro.',
+      },
+    },
+    whyItMatters: {
+      en: 'MCH indicates how much oxygen each red blood cell can carry. Low MCH together with low MCV strongly suggests iron deficiency.',
+      es: 'El HCM indica cuánto oxígeno puede transportar cada glóbulo rojo. HCM bajo junto con VCM bajo sugiere fuertemente deficiencia de hierro.',
+    },
+    optimalRange: { general: { min: 27, max: 33 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'neutrófilos': {
+    simpleName: { en: 'Neutrophils (Infection Fighters)', es: 'Neutrófilos (Combaten infecciones)' },
+    emoji: '🛡️',
+    whatItMeasures: {
+      en: 'The most common type of white blood cell — your first responders against bacterial infections',
+      es: 'El tipo más común de glóbulo blanco — los primeros en responder a infecciones bacterianas',
+    },
+    messages: {
+      normal: {
+        en: 'Your neutrophils are in a healthy range. Your frontline immune defense is strong.',
+        es: 'Tus neutrófilos están en buen rango. Tu defensa inmune de primera línea es fuerte.',
+      },
+      borderline: {
+        en: 'Your neutrophils are slightly off. Could be a response to mild stress or infection.',
+        es: 'Tus neutrófilos están algo fuera del rango. Puede ser respuesta a estrés leve o infección.',
+      },
+      high: {
+        en: 'Your neutrophils are elevated — your body is likely fighting a bacterial infection or inflammation.',
+        es: 'Tus neutrófilos están altos — tu cuerpo puede estar combatiendo una infección bacteriana o inflamación.',
+      },
+      low: {
+        en: 'Your neutrophils are low (neutropenia). You may be more susceptible to infections. See your doctor.',
+        es: 'Tus neutrófilos están bajos (neutropenia). Puedes ser más susceptible a infecciones. Consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Neutrophils are 60-70% of your white blood cells and are the first to arrive at infection sites. Low levels significantly increase infection risk.',
+      es: 'Los neutrófilos son el 60-70% de tus glóbulos blancos y son los primeros en llegar a sitios de infección. Niveles bajos aumentan significativamente el riesgo de infecciones.',
+    },
+    optimalRange: { general: { min: 40, max: 70 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'linfocitos': {
+    simpleName: { en: 'Lymphocytes (Immune Memory)', es: 'Linfocitos (Memoria inmune)' },
+    emoji: '🛡️',
+    whatItMeasures: {
+      en: 'White blood cells responsible for immune memory and fighting viral infections',
+      es: 'Glóbulos blancos responsables de la memoria inmune y lucha contra virus',
+    },
+    messages: {
+      normal: {
+        en: 'Your lymphocytes are in a healthy range. Your adaptive immune system is working well.',
+        es: 'Tus linfocitos están en buen rango. Tu sistema inmune adaptativo funciona bien.',
+      },
+      borderline: {
+        en: 'Your lymphocytes are slightly off. Could be a normal response to a recent illness.',
+        es: 'Tus linfocitos están algo fuera del rango. Puede ser respuesta normal a una enfermedad reciente.',
+      },
+      high: {
+        en: 'Your lymphocytes are elevated — often seen with viral infections or chronic inflammation.',
+        es: 'Tus linfocitos están altos — frecuente en infecciones virales o inflamación crónica.',
+      },
+      low: {
+        en: 'Your lymphocytes are low. This can weaken your immune system. Discuss with your doctor.',
+        es: 'Tus linfocitos están bajos. Puede debilitar tu sistema inmune. Consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Lymphocytes include T cells and B cells — the core of your adaptive immune system. They remember past infections and produce antibodies.',
+      es: 'Los linfocitos incluyen células T y B — el núcleo de tu sistema inmune adaptativo. Recuerdan infecciones pasadas y producen anticuerpos.',
+    },
+    optimalRange: { general: { min: 20, max: 40 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'vsg': {
+    simpleName: { en: 'Sed Rate (ESR)', es: 'Velocidad de Sedimentación (VSG)' },
+    emoji: '🔥',
+    whatItMeasures: {
+      en: 'How fast red blood cells settle — an indirect measure of inflammation',
+      es: 'Velocidad a la que sedimentan los glóbulos rojos — medida indirecta de inflamación',
+    },
+    messages: {
+      normal: {
+        en: 'Your ESR is normal. No signs of systemic inflammation.',
+        es: 'Tu VSG es normal. Sin señales de inflamación sistémica.',
+      },
+      borderline: {
+        en: 'Your ESR is slightly elevated. Mild inflammation or infection may be present.',
+        es: 'Tu VSG está algo elevada. Puede haber inflamación o infección leve.',
+      },
+      high: {
+        en: 'Your ESR is elevated — indicates active inflammation. Your doctor should investigate the cause.',
+        es: 'Tu VSG está elevada — indica inflamación activa. Tu médico debe investigar la causa.',
+      },
+      low: {
+        en: 'Your ESR is very low — generally a good sign. No inflammation detected.',
+        es: 'Tu VSG es muy baja — generalmente buena señal. Sin inflamación detectable.',
+      },
+    },
+    whyItMatters: {
+      en: 'ESR is a non-specific but useful marker of inflammation. Elevated ESR can indicate infections, autoimmune conditions, or even some cancers.',
+      es: 'La VSG es un marcador inespecífico pero útil de inflamación. Valores elevados pueden indicar infecciones, enfermedades autoinmunes o incluso algunos cánceres.',
+    },
+    optimalRange: {
+      male: { min: 0, max: 15 },
+      female: { min: 0, max: 20 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Metabolic (additional) ────────────────────────────────────────────────
+  'insulina': {
+    simpleName: { en: 'Insulin', es: 'Insulina' },
+    emoji: '💉',
+    whatItMeasures: {
+      en: 'The hormone that moves sugar from your blood into your cells for energy',
+      es: 'Hormona que mueve el azúcar de la sangre a las células para producir energía',
+    },
+    messages: {
+      normal: {
+        en: 'Your insulin is in a healthy range. Your body is handling blood sugar efficiently.',
+        es: 'Tu insulina está en buen rango. Tu cuerpo maneja el azúcar eficientemente.',
+      },
+      borderline: {
+        en: 'Your insulin is slightly elevated — early sign of insulin resistance. Diet and exercise can help.',
+        es: 'Tu insulina está algo elevada — señal temprana de resistencia a la insulina. Dieta y ejercicio pueden ayudar.',
+      },
+      high: {
+        en: 'Your insulin is high — this suggests insulin resistance, a precursor to type 2 diabetes. See your doctor.',
+        es: 'Tu insulina está alta — sugiere resistencia a la insulina, precursor de diabetes tipo 2. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your insulin is low — could indicate your pancreas is underproducing. Discuss with your doctor.',
+        es: 'Tu insulina está baja — puede indicar que el páncreas no produce suficiente. Consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Fasting insulin is one of the earliest markers of metabolic dysfunction. Elevated insulin can appear years before blood sugar rises, making it a powerful early warning sign.',
+      es: 'La insulina en ayunas es uno de los marcadores más tempranos de disfunción metabólica. La insulina puede elevarse años antes de que suba el azúcar.',
+    },
+    foodsToEat: {
+      en: 'leafy greens, whole grains, legumes, nuts, cinnamon, apple cider vinegar',
+      es: 'verduras de hoja, granos enteros, legumbres, nueces, canela, vinagre de manzana',
+    },
+    foodsToAvoid: {
+      en: 'sugar, refined carbs, white bread, sodas, fruit juice, processed snacks',
+      es: 'azúcar, carbohidratos refinados, pan blanco, refrescos, jugo de fruta, snacks procesados',
+    },
+    optimalRange: { general: { min: 2, max: 8 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 6,
+  },
+
+  // ── Hormones (additional) ─────────────────────────────────────────────────
+  'dhea-s': {
+    simpleName: { en: 'DHEA-S (Adrenal Youth)', es: 'DHEA-S (Juventud adrenal)' },
+    emoji: '💊',
+    whatItMeasures: {
+      en: 'A hormone produced by your adrenal glands — a precursor to sex hormones and aging marker',
+      es: 'Hormona producida por las glándulas suprarrenales — precursor de hormonas sexuales y marcador de envejecimiento',
+    },
+    messages: {
+      normal: {
+        en: 'Your DHEA-S is in a healthy range for your age. Adrenal function looks good.',
+        es: 'Tu DHEA-S está en buen rango para tu edad. Función adrenal en buen estado.',
+      },
+      borderline: {
+        en: 'Your DHEA-S is slightly off. This may reflect adrenal stress or age-related decline.',
+        es: 'Tu DHEA-S está algo fuera del rango. Puede reflejar estrés adrenal o cambio asociado a la edad.',
+      },
+      high: {
+        en: 'Your DHEA-S is elevated — can be related to PCOS in women or adrenal tumors. See your doctor.',
+        es: 'Tu DHEA-S está elevada — puede relacionarse con SOP en mujeres o tumores adrenales. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Your DHEA-S is low. This is common with aging but can also indicate adrenal insufficiency.',
+        es: 'Tu DHEA-S está baja. Es común con la edad pero también puede indicar insuficiencia adrenal.',
+      },
+    },
+    whyItMatters: {
+      en: 'DHEA-S is the most abundant steroid hormone in your body. It declines naturally with age and is considered a biomarker of biological aging. Low levels are linked to fatigue, depression, and reduced immunity.',
+      es: 'La DHEA-S es la hormona esteroidea más abundante del cuerpo. Disminuye con la edad y se considera un biomarcador de envejecimiento biológico.',
+    },
+    optimalRange: {
+      male: { min: 200, max: 500 },
+      female: { min: 100, max: 400 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'estradiol': {
+    simpleName: { en: 'Estradiol (Estrogen)', es: 'Estradiol (Estrógeno)' },
+    emoji: '🌸',
+    whatItMeasures: {
+      en: 'The main form of estrogen — key for reproductive health, bones, and mood',
+      es: 'La forma principal de estrógeno — clave para salud reproductiva, huesos y ánimo',
+    },
+    messages: {
+      normal: {
+        en: 'Your estradiol is in a healthy range. Reproductive and bone health are well-supported.',
+        es: 'Tu estradiol está en buen rango. Salud reproductiva y ósea bien respaldadas.',
+      },
+      borderline: {
+        en: 'Your estradiol is slightly off. This can vary with menstrual cycle phase (in women).',
+        es: 'Tu estradiol está algo fuera del rango. Puede variar según la fase del ciclo menstrual (en mujeres).',
+      },
+      high: {
+        en: 'Your estradiol is elevated. In men, this can cause breast tissue growth; in women, it may indicate ovarian issues.',
+        es: 'Tu estradiol está elevado. En hombres puede causar ginecomastia; en mujeres puede indicar problemas ováricos.',
+      },
+      low: {
+        en: 'Your estradiol is low. This can affect bone density, mood, and reproductive function.',
+        es: 'Tu estradiol está bajo. Puede afectar densidad ósea, ánimo y función reproductiva.',
+      },
+    },
+    whyItMatters: {
+      en: 'Estradiol is the primary estrogen responsible for reproductive function, bone density, heart health, and brain function. In menopause, declining levels cause many symptoms.',
+      es: 'El estradiol es el estrógeno principal responsable de función reproductiva, densidad ósea, salud cardíaca y función cerebral.',
+    },
+    optimalRange: {
+      female: { min: 30, max: 400 },
+      male: { min: 10, max: 40 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'progesterona': {
+    simpleName: { en: 'Progesterone', es: 'Progesterona' },
+    emoji: '🌙',
+    whatItMeasures: {
+      en: 'A hormone important for menstrual cycle, pregnancy, and mood regulation',
+      es: 'Hormona importante para el ciclo menstrual, embarazo y regulación del ánimo',
+    },
+    messages: {
+      normal: {
+        en: 'Your progesterone is in a healthy range. Hormonal balance looks good.',
+        es: 'Tu progesterona está en buen rango. Tu equilibrio hormonal se ve bien.',
+      },
+      borderline: {
+        en: 'Your progesterone is slightly off. Varies greatly with menstrual cycle phase.',
+        es: 'Tu progesterona está algo fuera del rango. Varía mucho según la fase del ciclo.',
+      },
+      high: {
+        en: 'Your progesterone is elevated — could indicate pregnancy or ovulation (normal) or ovarian cysts.',
+        es: 'Tu progesterona está elevada — puede indicar embarazo, ovulación (normal) o quistes ováricos.',
+      },
+      low: {
+        en: 'Your progesterone is low. This can cause irregular periods, mood changes, and difficulty conceiving.',
+        es: 'Tu progesterona está baja. Puede causar períodos irregulares, cambios de ánimo y dificultad para concebir.',
+      },
+    },
+    whyItMatters: {
+      en: 'Progesterone prepares the uterus for pregnancy and regulates the menstrual cycle. Low levels can cause PMS, irregular periods, and fertility issues.',
+      es: 'La progesterona prepara el útero para el embarazo y regula el ciclo menstrual. Niveles bajos pueden causar SPM, períodos irregulares y problemas de fertilidad.',
+    },
+    optimalRange: {
+      female: { min: 5, max: 20 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Vitamins (additional) ─────────────────────────────────────────────────
+  'ácido fólico': {
+    simpleName: { en: 'Folate (Vitamin B9)', es: 'Ácido Fólico (Vitamina B9)' },
+    emoji: '🥬',
+    whatItMeasures: {
+      en: 'Folate (vitamin B9) — essential for DNA synthesis, cell division, and red blood cell formation',
+      es: 'Folato (vitamina B9) — esencial para síntesis de ADN, división celular y formación de glóbulos rojos',
+    },
+    messages: {
+      normal: {
+        en: 'Your folate is in a healthy range. DNA repair and blood cell production are well-supported.',
+        es: 'Tu folato está en buen rango. Reparación de ADN y producción de células sanguíneas bien respaldados.',
+      },
+      borderline: {
+        en: 'Your folate is slightly low. Eat more leafy greens, beans, and fortified foods.',
+        es: 'Tu folato está algo bajo. Come más verduras de hoja, legumbres y alimentos fortificados.',
+      },
+      high: {
+        en: 'Your folate is very high — usually from supplements. Rarely harmful but can mask B12 deficiency.',
+        es: 'Tu folato está muy alto — usualmente por suplementos. Raramente dañino pero puede enmascarar deficiencia de B12.',
+      },
+      low: {
+        en: 'Your folate is deficient. This can cause a specific type of anemia and, in pregnancy, neural tube defects.',
+        es: 'Tu folato está deficiente. Puede causar un tipo específico de anemia y, en embarazo, defectos del tubo neural.',
+      },
+    },
+    whyItMatters: {
+      en: 'Folate is vital for producing new cells and DNA repair. Deficiency causes macrocytic anemia (large, immature red blood cells) and is especially dangerous in early pregnancy.',
+      es: 'El folato es vital para producir nuevas células y reparar ADN. La deficiencia causa anemia macrocítica y es especialmente peligrosa en el embarazo temprano.',
+    },
+    foodsToEat: {
+      en: 'spinach, kale, broccoli, lentils, beans, avocado, fortified cereals, oranges',
+      es: 'espinaca, kale, brócoli, lentejas, frijoles, aguacate, cereales fortificados, naranjas',
+    },
+    foodsToAvoid: {
+      en: 'excess alcohol (depletes folate), overcooked vegetables (destroys folate)',
+      es: 'exceso de alcohol (agota el folato), verduras sobrecocidas (destruye el folato)',
+    },
+    optimalRange: { general: { min: 5, max: 20 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'folato': {
+    simpleName: { en: 'Folate (Vitamin B9)', es: 'Folato (Vitamina B9)' },
+    emoji: '🥬',
+    whatItMeasures: {
+      en: 'Folate — a B vitamin essential for DNA repair and healthy red blood cells',
+      es: 'Folato — vitamina B esencial para reparación de ADN y glóbulos rojos sanos',
+    },
+    messages: {
+      normal: {
+        en: 'Your folate is healthy. Cell division and blood production are well-supported.',
+        es: 'Tu folato está bien. División celular y producción de sangre bien respaldados.',
+      },
+      borderline: {
+        en: 'Your folate is slightly low. Add more leafy greens and legumes to your diet.',
+        es: 'Tu folato está algo bajo. Agrega más verduras de hoja y legumbres a tu dieta.',
+      },
+      high: {
+        en: 'Your folate is very high — usually from supplements. Monitor B12 to avoid masking deficiency.',
+        es: 'Tu folato está muy alto — usualmente por suplementos. Monitorea B12 para evitar enmascarar deficiencia.',
+      },
+      low: {
+        en: 'Your folate is deficient. This can lead to macrocytic anemia and is critical in pregnancy.',
+        es: 'Tu folato está deficiente. Puede causar anemia macrocítica y es crítico en el embarazo.',
+      },
+    },
+    whyItMatters: {
+      en: 'Folate is needed to create new cells and repair DNA. It works closely with B12 to produce healthy red blood cells.',
+      es: 'El folato es necesario para crear nuevas células y reparar ADN. Trabaja junto con la B12 para producir glóbulos rojos sanos.',
+    },
+    foodsToEat: {
+      en: 'spinach, kale, broccoli, lentils, beans, avocado, fortified cereals',
+      es: 'espinaca, kale, brócoli, lentejas, frijoles, aguacate, cereales fortificados',
+    },
+    foodsToAvoid: {
+      en: 'excess alcohol, overcooked vegetables',
+      es: 'exceso de alcohol, verduras sobrecocidas',
+    },
+    optimalRange: { general: { min: 5, max: 20 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Urine Biomarkers ─────────────────────────────────────────────────────────
+
+  'glucosa (orina)': {
+    simpleName: { en: 'Urine Sugar', es: 'Azúcar en Orina' },
+    emoji: '🍬',
+    whatItMeasures: {
+      en: 'Whether sugar is spilling into your urine, which normally should not happen',
+      es: 'Si hay azúcar en la orina, lo cual normalmente no debería ocurrir',
+    },
+    messages: {
+      normal: {
+        en: 'No sugar detected in your urine — that\'s perfectly normal.',
+        es: 'No se detectó azúcar en la orina — completamente normal.',
+      },
+      borderline: {
+        en: 'A trace of sugar was found in your urine. Worth monitoring, especially if you have diabetes risk.',
+        es: 'Se encontró un rastro de azúcar en la orina. Vale la pena vigilar, sobre todo si tienes riesgo de diabetes.',
+      },
+      high: {
+        en: 'Sugar is present in your urine. This can indicate uncontrolled diabetes or high blood sugar — consult your doctor.',
+        es: 'Hay azúcar presente en la orina. Puede indicar diabetes no controlada o hiperglucemia — consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for glucose in urine — this is normal.',
+        es: 'Negativo para glucosa en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Healthy kidneys reabsorb all glucose. When blood sugar is very high, the kidneys can\'t keep up and glucose spills into the urine — a classic sign of uncontrolled diabetes.',
+      es: 'Los riñones sanos reabsorben toda la glucosa. Cuando el azúcar en sangre es muy alta, los riñones no pueden absorber todo y la glucosa aparece en la orina — un signo clásico de diabetes no controlada.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'albúmina (orina)': {
+    simpleName: { en: 'Urine Protein', es: 'Proteína en Orina' },
+    emoji: '🫘',
+    whatItMeasures: {
+      en: 'Whether protein (albumin) is leaking into your urine, indicating possible kidney damage',
+      es: 'Si hay proteína (albúmina) en la orina, lo cual puede indicar daño renal',
+    },
+    messages: {
+      normal: {
+        en: 'No protein detected in your urine — your kidneys are filtering well.',
+        es: 'No se detectó proteína en la orina — tus riñones filtran bien.',
+      },
+      borderline: {
+        en: 'A trace of protein was found in your urine. This can be temporary (exercise, fever) but should be monitored.',
+        es: 'Se encontró un rastro de proteína en la orina. Puede ser temporal (ejercicio, fiebre) pero debe vigilarse.',
+      },
+      high: {
+        en: 'Protein is present in your urine. This may indicate kidney damage — consult your doctor.',
+        es: 'Hay proteína en la orina. Puede indicar daño renal — consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for protein in urine — this is normal.',
+        es: 'Negativo para proteína en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Healthy kidneys keep protein in the blood. When albumin leaks into the urine (albuminuria), it can signal early kidney disease, especially in people with diabetes or high blood pressure.',
+      es: 'Los riñones sanos mantienen la proteína en la sangre. Cuando la albúmina se filtra a la orina (albuminuria), puede ser una señal temprana de enfermedad renal, especialmente en personas con diabetes o hipertensión.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'nitratos': {
+    simpleName: { en: 'Nitrites', es: 'Nitritos' },
+    emoji: '🦠',
+    whatItMeasures: {
+      en: 'Whether bacteria that cause urinary tract infections are present',
+      es: 'Si hay bacterias causantes de infecciones urinarias presentes',
+    },
+    messages: {
+      normal: {
+        en: 'No nitrites detected — no signs of a urinary tract infection.',
+        es: 'No se detectaron nitritos — sin signos de infección urinaria.',
+      },
+      borderline: {
+        en: 'A weak positive for nitrites — may indicate a mild urinary infection. Consider retesting.',
+        es: 'Positivo débil para nitritos — puede indicar infección urinaria leve. Considera repetir la prueba.',
+      },
+      high: {
+        en: 'Nitrites are positive — this strongly suggests a bacterial urinary tract infection. See your doctor.',
+        es: 'Nitritos positivos — esto sugiere fuertemente una infección urinaria bacteriana. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for nitrites — this is the normal result.',
+        es: 'Negativo para nitritos — este es el resultado normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Certain bacteria convert nitrates (normally present in urine) to nitrites. A positive result is a strong indicator of a bacterial urinary tract infection that may need antibiotics.',
+      es: 'Ciertas bacterias convierten los nitratos (normalmente presentes en orina) en nitritos. Un resultado positivo es un indicador fuerte de infección urinaria bacteriana que puede necesitar antibióticos.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'nitritos': {
+    simpleName: { en: 'Nitrites', es: 'Nitritos' },
+    emoji: '🦠',
+    whatItMeasures: {
+      en: 'Whether bacteria that cause urinary tract infections are present',
+      es: 'Si hay bacterias causantes de infecciones urinarias presentes',
+    },
+    messages: {
+      normal: {
+        en: 'No nitrites detected — no signs of a urinary tract infection.',
+        es: 'No se detectaron nitritos — sin signos de infección urinaria.',
+      },
+      borderline: {
+        en: 'A weak positive for nitrites — may indicate a mild urinary infection. Consider retesting.',
+        es: 'Positivo débil para nitritos — puede indicar infección urinaria leve. Considera repetir la prueba.',
+      },
+      high: {
+        en: 'Nitrites are positive — this strongly suggests a bacterial urinary tract infection. See your doctor.',
+        es: 'Nitritos positivos — esto sugiere fuertemente una infección urinaria bacteriana. Consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for nitrites — this is the normal result.',
+        es: 'Negativo para nitritos — este es el resultado normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Certain bacteria convert nitrates to nitrites. A positive result strongly suggests a bacterial urinary tract infection.',
+      es: 'Ciertas bacterias convierten nitratos en nitritos. Un resultado positivo sugiere fuertemente una infección urinaria bacteriana.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'acetona': {
+    simpleName: { en: 'Ketones', es: 'Cetonas' },
+    emoji: '⚡',
+    whatItMeasures: {
+      en: 'Whether your body is burning fat instead of sugar for energy, producing ketones',
+      es: 'Si tu cuerpo está quemando grasa en vez de azúcar para obtener energía, produciendo cetonas',
+    },
+    messages: {
+      normal: {
+        en: 'No ketones detected — your body is using glucose normally for energy.',
+        es: 'No se detectaron cetonas — tu cuerpo usa glucosa normalmente como energía.',
+      },
+      borderline: {
+        en: 'Trace ketones found. This can happen with fasting, keto diets, or mild dehydration.',
+        es: 'Se encontraron trazas de cetonas. Puede ocurrir por ayuno, dietas keto o deshidratación leve.',
+      },
+      high: {
+        en: 'Ketones are elevated. In diabetics this can signal diabetic ketoacidosis — seek medical attention if you have diabetes.',
+        es: 'Las cetonas están elevadas. En diabéticos puede señalar cetoacidosis diabética — busca atención médica si tienes diabetes.',
+      },
+      low: {
+        en: 'Negative for ketones — this is normal.',
+        es: 'Negativo para cetonas — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'When the body can\'t use glucose (fasting, low-carb diet, or uncontrolled diabetes), it burns fat and produces ketones. Small amounts are harmless, but high levels in diabetics can be dangerous (ketoacidosis).',
+      es: 'Cuando el cuerpo no puede usar glucosa (ayuno, dieta baja en carbohidratos o diabetes no controlada), quema grasa y produce cetonas. Cantidades pequeñas son inofensivas, pero niveles altos en diabéticos pueden ser peligrosos (cetoacidosis).',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'cetonas': {
+    simpleName: { en: 'Ketones', es: 'Cetonas' },
+    emoji: '⚡',
+    whatItMeasures: {
+      en: 'Whether your body is burning fat instead of sugar for energy, producing ketones',
+      es: 'Si tu cuerpo está quemando grasa en vez de azúcar para obtener energía, produciendo cetonas',
+    },
+    messages: {
+      normal: {
+        en: 'No ketones detected — your body is using glucose normally for energy.',
+        es: 'No se detectaron cetonas — tu cuerpo usa glucosa normalmente como energía.',
+      },
+      borderline: {
+        en: 'Trace ketones found. This can happen with fasting, keto diets, or mild dehydration.',
+        es: 'Se encontraron trazas de cetonas. Puede ocurrir por ayuno, dietas keto o deshidratación leve.',
+      },
+      high: {
+        en: 'Ketones are elevated. In diabetics this can signal diabetic ketoacidosis — seek medical attention if you have diabetes.',
+        es: 'Las cetonas están elevadas. En diabéticos puede señalar cetoacidosis diabética — busca atención médica si tienes diabetes.',
+      },
+      low: {
+        en: 'Negative for ketones — this is normal.',
+        es: 'Negativo para cetonas — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Ketones appear when the body burns fat instead of glucose. High levels in diabetics can indicate ketoacidosis, a medical emergency.',
+      es: 'Las cetonas aparecen cuando el cuerpo quema grasa en vez de glucosa. Niveles altos en diabéticos pueden indicar cetoacidosis, una emergencia médica.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'sangre oculta': {
+    simpleName: { en: 'Hidden Blood', es: 'Sangre Oculta' },
+    emoji: '🩸',
+    whatItMeasures: {
+      en: 'Whether there is blood in your urine that is not visible to the naked eye',
+      es: 'Si hay sangre en la orina que no es visible a simple vista',
+    },
+    messages: {
+      normal: {
+        en: 'No hidden blood detected in your urine — that\'s normal.',
+        es: 'No se detectó sangre oculta en la orina — eso es normal.',
+      },
+      borderline: {
+        en: 'A trace of blood was detected. This can happen after vigorous exercise or menstruation. Retest if it persists.',
+        es: 'Se detectó un rastro de sangre. Puede ocurrir tras ejercicio intenso o menstruación. Repetir si persiste.',
+      },
+      high: {
+        en: 'Blood is present in your urine. This needs further investigation — consult your doctor.',
+        es: 'Hay sangre presente en la orina. Esto necesita mayor investigación — consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for blood in urine — this is normal.',
+        es: 'Negativo para sangre en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Blood in urine (hematuria) can signal infections, kidney stones, or more serious conditions. Even small amounts warrant medical follow-up if they persist.',
+      es: 'Sangre en la orina (hematuria) puede señalar infecciones, cálculos renales o condiciones más serias. Incluso cantidades pequeñas justifican seguimiento médico si persisten.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'bilis': {
+    simpleName: { en: 'Bile', es: 'Bilis' },
+    emoji: '🟡',
+    whatItMeasures: {
+      en: 'Whether bilirubin (a liver byproduct) is present in your urine',
+      es: 'Si hay bilirrubina (un subproducto del hígado) presente en la orina',
+    },
+    messages: {
+      normal: {
+        en: 'No bilirubin detected in your urine — your liver is processing it normally.',
+        es: 'No se detectó bilirrubina en la orina — tu hígado la procesa normalmente.',
+      },
+      borderline: {
+        en: 'A trace of bilirubin in urine. This may indicate mild liver stress — worth monitoring.',
+        es: 'Traza de bilirrubina en orina. Puede indicar estrés hepático leve — vale la pena monitorear.',
+      },
+      high: {
+        en: 'Bilirubin is present in your urine. This can indicate liver disease, bile duct obstruction, or hepatitis — see your doctor.',
+        es: 'Hay bilirrubina en la orina. Puede indicar enfermedad hepática, obstrucción biliar o hepatitis — consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for bilirubin in urine — this is normal.',
+        es: 'Negativo para bilirrubina en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Bilirubin normally does not appear in urine. Its presence suggests the liver is struggling to process it, or that bile ducts may be blocked.',
+      es: 'La bilirrubina normalmente no aparece en la orina. Su presencia sugiere que el hígado tiene dificultad para procesarla, o que los conductos biliares pueden estar obstruidos.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'bilirrubina (orina)': {
+    simpleName: { en: 'Bile', es: 'Bilis' },
+    emoji: '🟡',
+    whatItMeasures: {
+      en: 'Whether bilirubin (a liver byproduct) is present in your urine',
+      es: 'Si hay bilirrubina (un subproducto del hígado) presente en la orina',
+    },
+    messages: {
+      normal: {
+        en: 'No bilirubin detected in your urine — your liver is processing it normally.',
+        es: 'No se detectó bilirrubina en la orina — tu hígado la procesa normalmente.',
+      },
+      borderline: {
+        en: 'A trace of bilirubin in urine. This may indicate mild liver stress — worth monitoring.',
+        es: 'Traza de bilirrubina en orina. Puede indicar estrés hepático leve — vale la pena monitorear.',
+      },
+      high: {
+        en: 'Bilirubin is present in your urine. This can indicate liver disease, bile duct obstruction, or hepatitis — see your doctor.',
+        es: 'Hay bilirrubina en la orina. Puede indicar enfermedad hepática, obstrucción biliar o hepatitis — consulta a tu médico.',
+      },
+      low: {
+        en: 'Negative for bilirubin in urine — this is normal.',
+        es: 'Negativo para bilirrubina en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'Bilirubin normally does not appear in urine. Its presence suggests the liver is struggling to process it, or that bile ducts may be blocked.',
+      es: 'La bilirrubina normalmente no aparece en la orina. Su presencia sugiere que el hígado tiene dificultad para procesarla, o que los conductos biliares pueden estar obstruidos.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'urobilinógeno': {
+    simpleName: { en: 'Urobilinogen', es: 'Urobilinógeno' },
+    emoji: '🟠',
+    whatItMeasures: {
+      en: 'The amount of urobilinogen in your urine, a byproduct of bilirubin breakdown',
+      es: 'La cantidad de urobilinógeno en la orina, un subproducto de la descomposición de bilirrubina',
+    },
+    messages: {
+      normal: {
+        en: 'Your urobilinogen is in the normal range — your liver and gut are processing bilirubin well.',
+        es: 'Tu urobilinógeno está en rango normal — tu hígado e intestino procesan la bilirrubina bien.',
+      },
+      borderline: {
+        en: 'Urobilinogen is slightly elevated. This may indicate mild liver stress or increased red blood cell breakdown.',
+        es: 'El urobilinógeno está ligeramente elevado. Puede indicar estrés hepático leve o aumento de destrucción de glóbulos rojos.',
+      },
+      high: {
+        en: 'Urobilinogen is high. This may indicate liver disease, hemolytic anemia, or bile duct issues — consult your doctor.',
+        es: 'El urobilinógeno está alto. Puede indicar enfermedad hepática, anemia hemolítica o problemas biliares — consulta a tu médico.',
+      },
+      low: {
+        en: 'Urobilinogen is very low or absent. This may indicate a bile duct obstruction — discuss with your doctor.',
+        es: 'El urobilinógeno está muy bajo o ausente. Puede indicar obstrucción biliar — consulta a tu médico.',
+      },
+    },
+    whyItMatters: {
+      en: 'Urobilinogen is formed in the gut from bilirubin. Normal levels (0.1-1.0 UE/dL) confirm the liver and bile system are working. High levels may signal liver disease or excess red blood cell destruction.',
+      es: 'El urobilinógeno se forma en el intestino a partir de bilirrubina. Niveles normales (0.1-1.0 UE/dL) confirman que el hígado y el sistema biliar funcionan. Niveles altos pueden señalar enfermedad hepática o destrucción excesiva de glóbulos rojos.',
+    },
+    optimalRange: { general: { min: 0.1, max: 1.0 } },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'glóbulos blancos (orina)': {
+    simpleName: { en: 'Immune Defenders', es: 'Glóbulos Blancos' },
+    emoji: '🛡️',
+    whatItMeasures: {
+      en: 'Whether white blood cells are present in your urine, indicating infection or inflammation',
+      es: 'Si hay glóbulos blancos en la orina, indicando infección o inflamación',
+    },
+    messages: {
+      normal: {
+        en: 'No significant white blood cells in your urine — no signs of infection.',
+        es: 'No hay glóbulos blancos significativos en la orina — sin signos de infección.',
+      },
+      borderline: {
+        en: 'A few white blood cells found. This can be normal, but watch for UTI symptoms.',
+        es: 'Se encontraron algunos glóbulos blancos. Puede ser normal, pero vigila síntomas de infección urinaria.',
+      },
+      high: {
+        en: 'White blood cells are elevated in your urine. This usually indicates a urinary tract infection or inflammation — see your doctor.',
+        es: 'Los glóbulos blancos están elevados en la orina. Esto usualmente indica infección urinaria o inflamación — consulta a tu médico.',
+      },
+      low: {
+        en: 'No white blood cells in urine — this is normal.',
+        es: 'Sin glóbulos blancos en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'White blood cells in urine (pyuria) usually mean the immune system is fighting an infection in the urinary tract. Combined with positive nitrites, it strongly suggests a UTI.',
+      es: 'Glóbulos blancos en orina (piuria) usualmente significan que el sistema inmune está combatiendo una infección en el tracto urinario. Combinado con nitritos positivos, sugiere fuertemente una infección urinaria.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'leucocitos (orina)': {
+    simpleName: { en: 'Immune Defenders', es: 'Glóbulos Blancos' },
+    emoji: '🛡️',
+    whatItMeasures: {
+      en: 'Whether white blood cells are present in your urine, indicating infection or inflammation',
+      es: 'Si hay glóbulos blancos en la orina, indicando infección o inflamación',
+    },
+    messages: {
+      normal: {
+        en: 'No significant white blood cells in your urine — no signs of infection.',
+        es: 'No hay glóbulos blancos significativos en la orina — sin signos de infección.',
+      },
+      borderline: {
+        en: 'A few white blood cells found. This can be normal, but watch for UTI symptoms.',
+        es: 'Se encontraron algunos glóbulos blancos. Puede ser normal, pero vigila síntomas de infección urinaria.',
+      },
+      high: {
+        en: 'White blood cells are elevated in your urine. This usually indicates a urinary tract infection or inflammation — see your doctor.',
+        es: 'Los glóbulos blancos están elevados en la orina. Esto usualmente indica infección urinaria o inflamación — consulta a tu médico.',
+      },
+      low: {
+        en: 'No white blood cells in urine — this is normal.',
+        es: 'Sin glóbulos blancos en orina — esto es normal.',
+      },
+    },
+    whyItMatters: {
+      en: 'White blood cells in urine usually mean the immune system is fighting an infection in the urinary tract.',
+      es: 'Glóbulos blancos en orina usualmente significan que el sistema inmune combate una infección en el tracto urinario.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+};
+
+// ── Alias map for AI-extracted names that may differ from keys ────────────────
+// Maps common AI-extracted Spanish names to their knowledge-base key.
+const ALIASES: Record<string, string> = {
+  'glucosa en orina':        'glucosa (orina)',
+  'glucosa orina':           'glucosa (orina)',
+  'albúmina en orina':       'albúmina (orina)',
+  'albumina en orina':       'albúmina (orina)',
+  'albumina (orina)':        'albúmina (orina)',
+  'albumina orina':          'albúmina (orina)',
+  'proteína en orina':       'albúmina (orina)',
+  'nitratos':                'nitratos',
+  'nitritos':                'nitritos',
+  'nitratos / nitritos':     'nitritos',
+  'nitratos/nitritos':       'nitritos',
+  'acetona':                 'acetona',
+  'cetonas':                 'cetonas',
+  'cuerpos cetónicos':       'cetonas',
+  'ketones':                 'cetonas',
+  'sangre oculta':           'sangre oculta',
+  'sangre oculta en orina':  'sangre oculta',
+  'hemoglobina (orina)':     'sangre oculta',
+  'sangre':                  'sangre oculta',
+  'bilis':                   'bilis',
+  'bilirrubina (orina)':     'bilirrubina (orina)',
+  'bilirrubina en orina':    'bilirrubina (orina)',
+  'bilirrubina orina':       'bilirrubina (orina)',
+  'urobilinógeno':           'urobilinógeno',
+  'urobilinogeno':           'urobilinógeno',
+  'glóbulos blancos (orina)':'glóbulos blancos (orina)',
+  'globulos blancos (orina)':'glóbulos blancos (orina)',
+  'leucocitos (orina)':      'leucocitos (orina)',
+  'leucocitos en orina':     'leucocitos (orina)',
+  'glóbulos blancos en orina':'glóbulos blancos (orina)',
 };
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
 
 /**
  * Finds knowledge for a biomarker by name (case-insensitive, fuzzy match).
+ * Checks alias map first, then exact key, then fuzzy substring matching.
  */
 export function getBiomarkerKnowledge(name: string): BiomarkerKnowledge | null {
   const lower = name.toLowerCase().trim();
+
+  // 1. Check alias map first (handles urine-specific names)
+  if (ALIASES[lower] && K[ALIASES[lower]]) return K[ALIASES[lower]];
+
+  // 2. Direct key match
   if (K[lower]) return K[lower];
+
+  // 3. Fuzzy substring match
   for (const key of Object.keys(K)) {
     if (lower.includes(key) || key.includes(lower)) return K[key];
   }

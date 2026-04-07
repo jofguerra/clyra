@@ -1,31 +1,19 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView } from 'react-native';
 import { router } from 'expo-router';
-import { Check } from 'lucide-react-native';
+import { Check, Shield } from 'lucide-react-native';
 import Button from '../../components/ui/Button';
 import AppHeader from '../../components/AppHeader';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { useStore, HealthGoal } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
-import { TranslationKey } from '../../constants/i18n';
-
-type GoalDef = { id: HealthGoal; emoji: string; labelKey: TranslationKey };
-
-const GOALS: GoalDef[] = [
-    { id: 'mood',             emoji: '☀️', labelKey: 'goalMood' },
-    { id: 'metabolism',       emoji: '🔥', labelKey: 'goalMetabolism' },
-    { id: 'performance',      emoji: '💪', labelKey: 'goalPerformance' },
-    { id: 'testosterone',     emoji: '🧬', labelKey: 'goalTestosterone' },
-    { id: 'female_hormones',  emoji: '🌸', labelKey: 'goalFemaleHormones' },
-    { id: 'longevity',        emoji: '🧠', labelKey: 'goalLongevity' },
-    { id: 'preventative',     emoji: '🛡️', labelKey: 'goalPreventative' },
-];
+import { GOALS } from '../../constants/healthGoals';
 
 export default function GoalSelectionScreen() {
     const t = useT();
     const [selectedGoals, setSelectedGoals] = useState<Set<HealthGoal>>(new Set());
-    const setHasCompletedOnboarding = useStore((state) => state.setHasCompletedOnboarding);
+    const [disclaimerAccepted, setDisclaimerAccepted] = useState(false);
     const setHealthGoals = useStore((state) => state.setHealthGoals);
 
     const toggleGoal = (id: HealthGoal) => {
@@ -42,8 +30,7 @@ export default function GoalSelectionScreen() {
         if (selectedGoals.size > 0) {
             setHealthGoals(Array.from(selectedGoals));
         }
-        setHasCompletedOnboarding(true);
-        router.replace('/(tabs)');
+        router.push('/onboarding/loading');
     };
 
     return (
@@ -85,6 +72,28 @@ export default function GoalSelectionScreen() {
                         );
                     })}
                 </View>
+
+                {/* Medical disclaimer acknowledgment */}
+                <View style={styles.disclaimerBox}>
+                    <View style={styles.disclaimerHeader}>
+                        <Shield size={18} color={Colors.primary} />
+                        <Text style={styles.disclaimerTitle}>{t('disclaimerAccept')}</Text>
+                    </View>
+                    <Text style={styles.disclaimerText}>{t('disclaimerOnboarding')}</Text>
+                    <TouchableOpacity
+                        style={styles.disclaimerToggle}
+                        onPress={() => setDisclaimerAccepted(!disclaimerAccepted)}
+                        activeOpacity={0.7}
+                    >
+                        <View style={[
+                            styles.disclaimerCheck,
+                            disclaimerAccepted && styles.disclaimerCheckActive,
+                        ]}>
+                            {disclaimerAccepted && <Check size={14} color="#fff" strokeWidth={3} />}
+                        </View>
+                        <Text style={styles.disclaimerLabel}>{t('disclaimerAccept')}</Text>
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
 
             <View style={styles.footer}>
@@ -92,7 +101,8 @@ export default function GoalSelectionScreen() {
                     title={selectedGoals.size > 0 ? t('continueBtn') : t('skipForNow')}
                     onPress={handleContinue}
                     size="lg"
-                    variant={selectedGoals.size > 0 ? 'primary' : 'outline'}
+                    variant={selectedGoals.size > 0 && disclaimerAccepted ? 'primary' : 'outline'}
+                    disabled={!disclaimerAccepted}
                 />
             </View>
         </SafeAreaView>
@@ -173,6 +183,58 @@ const styles = StyleSheet.create({
     },
     cardLabelSelected: {
         color: Colors.primary,
+    },
+    // Disclaimer
+    disclaimerBox: {
+        marginTop: 32,
+        backgroundColor: Colors.primary + '08',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: Colors.primary + '20',
+    },
+    disclaimerHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    disclaimerTitle: {
+        fontFamily: Typography.families.display,
+        fontSize: 15,
+        fontWeight: '700',
+        color: Colors.foreground,
+    },
+    disclaimerText: {
+        fontFamily: Typography.families.body,
+        fontSize: 13,
+        color: Colors.mutedForeground,
+        lineHeight: 20,
+        marginBottom: 14,
+    },
+    disclaimerToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    disclaimerCheck: {
+        width: 24,
+        height: 24,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: Colors.outline,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    disclaimerCheckActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    disclaimerLabel: {
+        fontFamily: Typography.families.body,
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.foreground,
     },
     footer: {
         padding: 24,

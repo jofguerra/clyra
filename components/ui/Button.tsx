@@ -39,7 +39,7 @@ export default function Button({
         backgroundColor = 'transparent';
         textColor = Colors.primary;
     } else if (variant === 'destructive') {
-        backgroundColor = Colors.destructive;
+        backgroundColor = Colors.attention;
         textColor = Colors.primaryForeground;
     }
 

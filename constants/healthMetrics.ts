@@ -6,8 +6,20 @@
  */
 
 import { Biomarker } from '../services/openai';
+import { BodySystem, BODY_SYSTEMS, computeHealthScore } from './biomarkerSystems';
 
-// ── Biological Age ─────────────────────────────────────────────────────────────
+// ── Optimal Percentage ──────────────────────��─────────────────────────────────
+
+/**
+ * Computes the percentage of biomarkers currently in the optimal (normal) range.
+ */
+export function computeOptimalPercentage(biomarkers: Biomarker[]): number {
+  if (biomarkers.length === 0) return 0;
+  const optimal = biomarkers.filter(b => b.status === 'normal').length;
+  return Math.round((optimal / biomarkers.length) * 100);
+}
+
+// ── Biological Age ───────────────────────────────────────────────────────���─────
 
 /**
  * Estimates a biological age offset in years based on biomarker deviations.
@@ -189,7 +201,52 @@ export interface DoctorQuestion {
 }
 
 /**
+ * General wellness questions used as fallbacks when there aren't enough
+ * biomarker-specific questions to reach the minimum of 3.
+ */
+const GENERAL_WELLNESS_QUESTIONS: DoctorQuestion[] = [
+  {
+    marker: 'Screening',
+    question: {
+      en: 'What screening tests do you recommend for my age and profile?',
+      es: '¿Qué exámenes preventivos recomienda para mi edad y perfil?',
+    },
+  },
+  {
+    marker: 'Lifestyle',
+    question: {
+      en: 'Are there any lifestyle changes that could improve my results?',
+      es: '¿Hay cambios de estilo de vida que podrían mejorar mis resultados?',
+    },
+  },
+  {
+    marker: 'Follow-up',
+    question: {
+      en: 'How often should I retest these markers?',
+      es: '¿Con qué frecuencia debo repetir estos análisis?',
+    },
+  },
+  {
+    marker: 'Supplements',
+    question: {
+      en: 'Should I consider any supplements based on my results?',
+      es: '¿Debería considerar algún suplemento basado en mis resultados?',
+    },
+  },
+  {
+    marker: 'Priorities',
+    question: {
+      en: 'What are the most important markers for me to focus on?',
+      es: '¿Cuáles son los marcadores más importantes en los que debo enfocarme?',
+    },
+  },
+];
+
+const MIN_DOCTOR_QUESTIONS = 3;
+
+/**
  * Generates questions a patient should ask their doctor about out-of-range markers.
+ * Always returns at least 3 questions, padding with general wellness questions if needed.
  */
 export function generateDoctorQuestions(biomarkers: Biomarker[]): DoctorQuestion[] {
   const questions: DoctorQuestion[] = [];
@@ -209,5 +266,244 @@ export function generateDoctorQuestions(biomarkers: Biomarker[]): DoctorQuestion
     });
   }
 
+  // Pad with general wellness questions to ensure at least MIN_DOCTOR_QUESTIONS
+  let fallbackIdx = 0;
+  while (questions.length < MIN_DOCTOR_QUESTIONS && fallbackIdx < GENERAL_WELLNESS_QUESTIONS.length) {
+    questions.push(GENERAL_WELLNESS_QUESTIONS[fallbackIdx]);
+    fallbackIdx++;
+  }
+
   return questions;
+}
+
+// ── System Coverage ───────────────────────────────────────────────────────────
+
+export interface SystemCoverage {
+  covered: number;
+  total: number;
+  percentage: number;
+}
+
+/**
+ * Computes how many biomarkers the user has for a given body system.
+ */
+export function computeSystemCoverage(
+  biomarkers: Biomarker[],
+  system: BodySystem,
+): SystemCoverage {
+  const total = system.biomarkerNames.length;
+  const covered = system.biomarkerNames.filter(sysName => {
+    const s = sysName.toLowerCase();
+    return biomarkers.some(b => {
+      const bn = b.name.toLowerCase();
+      return bn === s || bn.includes(s) || s.includes(bn);
+    });
+  }).length;
+  const percentage = total > 0 ? Math.round((covered / total) * 100) : 0;
+  return { covered, total, percentage };
+}
+
+export interface OverallCoverage {
+  percentage: number;
+  systemCoverages: { systemId: string; percentage: number }[];
+}
+
+/**
+ * Computes coverage across all body systems, returns average percentage.
+ */
+export function computeOverallCoverage(biomarkers: Biomarker[]): OverallCoverage {
+  const systemCoverages = BODY_SYSTEMS.map(sys => ({
+    systemId: sys.id,
+    percentage: computeSystemCoverage(biomarkers, sys).percentage,
+  }));
+  const avg =
+    systemCoverages.length > 0
+      ? Math.round(
+          systemCoverages.reduce((sum, sc) => sum + sc.percentage, 0) /
+            systemCoverages.length,
+        )
+      : 0;
+  return { percentage: avg, systemCoverages };
+}
+
+// ── Simulate Improvement ──────────────────────────────────────────────────────
+
+export interface ImprovementSimulation {
+  currentScore: number;
+  projectedScore: number;
+  scoreDelta: number;
+  currentBioAge: number;
+  projectedBioAge: number;
+  bioAgeDelta: number;
+}
+
+/**
+ * Simulates the effect of normalizing specific markers on health score and bio age.
+ */
+export function simulateImprovement(
+  biomarkers: Biomarker[],
+  markersToNormalize: string[],
+  chronologicalAge: number = 40,
+): ImprovementSimulation {
+  const currentScore = computeHealthScore(biomarkers);
+  const { biologicalAge: currentBioAge } = computeBiologicalAge(biomarkers, chronologicalAge);
+
+  const lowerNames = markersToNormalize.map(n => n.toLowerCase());
+  const modified = biomarkers.map(b => {
+    const bn = b.name.toLowerCase();
+    const shouldNormalize = lowerNames.some(
+      n => bn === n || bn.includes(n) || n.includes(bn),
+    );
+    return shouldNormalize ? { ...b, status: 'normal' as const } : b;
+  });
+
+  const projectedScore = computeHealthScore(modified);
+  const { biologicalAge: projectedBioAge } = computeBiologicalAge(modified, chronologicalAge);
+
+  return {
+    currentScore,
+    projectedScore,
+    scoreDelta: projectedScore - currentScore,
+    currentBioAge,
+    projectedBioAge,
+    bioAgeDelta: projectedBioAge - currentBioAge,
+  };
+}
+
+// ── Top Priorities ────────────────────────────────────────────────────────────
+
+export interface Priority {
+  title: string;
+  subtitle: string;
+  impact: string;
+  icon: string;
+  markerName?: string;
+}
+
+type SimplifiedSession = { biomarkers: Biomarker[]; healthScore: number; date: string };
+
+const SYSTEM_EMOJI_MAP: Record<string, string> = {
+  cardiovascular: '❤️',
+  hepatico: '🟤',
+  metabolico: '⚡',
+  renal: '🫘',
+  tiroideo: '🦋',
+  hematologico: '🩸',
+  vitaminas: '✨',
+  hormonal: '💊',
+};
+
+function getMarkerSystemEmoji(markerName: string): string {
+  const lower = markerName.toLowerCase();
+  for (const sys of BODY_SYSTEMS) {
+    const match = sys.biomarkerNames.some(n => {
+      const s = n.toLowerCase();
+      return lower === s || lower.includes(s) || s.includes(lower);
+    });
+    if (match) return SYSTEM_EMOJI_MAP[sys.id] || '🔬';
+  }
+  return '🔬';
+}
+
+function simpleName(name: string): string {
+  // Return a shorter, user-friendly version of the biomarker name
+  return name
+    .replace(/\s*\(.*\)/, '')   // remove parenthetical
+    .replace(/en ayunas/i, '')  // remove "en ayunas"
+    .trim();
+}
+
+/**
+ * Returns top 3 actionable priorities based on out-of-range markers and coverage gaps.
+ */
+export function getTopPriorities(
+  biomarkers: Biomarker[],
+  _sessions: SimplifiedSession[],
+  language: 'en' | 'es',
+): Priority[] {
+  const priorities: Priority[] = [];
+
+  // ── 1. Out-of-range markers sorted by severity ─────────────────────────────
+  const outOfRange = biomarkers.filter(b => b.status !== 'normal');
+
+  // Sort: high/low first, then borderline
+  const sorted = [...outOfRange].sort((a, b) => {
+    const severityOrder = (s: string) =>
+      s === 'high' || s === 'low' ? 0 : s === 'borderline' ? 1 : 2;
+    return severityOrder(a.status) - severityOrder(b.status);
+  });
+
+  for (const marker of sorted) {
+    if (priorities.length >= 3) break;
+
+    const sim = simulateImprovement(biomarkers, [marker.name]);
+    const delta = sim.scoreDelta;
+    const shortName = simpleName(marker.name);
+    const icon = getMarkerSystemEmoji(marker.name);
+
+    const isHigh = marker.status === 'high';
+    const isLow = marker.status === 'low';
+
+    let title: string;
+    let subtitle: string;
+
+    if (language === 'es') {
+      title = isHigh
+        ? `Bajar ${shortName}`
+        : isLow
+          ? `Subir ${shortName}`
+          : `Mejorar ${shortName}`;
+      subtitle = isHigh
+        ? `Tu ${shortName} está por encima del rango ideal. Enfócate en hábitos que lo reduzcan.`
+        : isLow
+          ? `Tu ${shortName} está bajo. Considera ajustes en dieta o suplementación.`
+          : `Tu ${shortName} está en el límite. Pequeños cambios pueden normalizarlo.`;
+    } else {
+      title = isHigh
+        ? `Lower ${shortName}`
+        : isLow
+          ? `Raise ${shortName}`
+          : `Improve ${shortName}`;
+      subtitle = isHigh
+        ? `Your ${shortName} is above the ideal range. Focus on habits to bring it down.`
+        : isLow
+          ? `Your ${shortName} is low. Consider diet adjustments or supplementation.`
+          : `Your ${shortName} is borderline. Small changes can normalize it.`;
+    }
+
+    const impact =
+      language === 'es'
+        ? `+${delta} puntos al score`
+        : `+${delta} points to score`;
+
+    priorities.push({ title, subtitle, impact, icon, markerName: marker.name });
+  }
+
+  // ── 2. Coverage gaps — suggest completing uncovered systems ─────────────────
+  if (priorities.length < 3) {
+    for (const sys of BODY_SYSTEMS) {
+      if (priorities.length >= 3) break;
+      const cov = computeSystemCoverage(biomarkers, sys);
+      if (cov.covered === 0) {
+        const sysName = language === 'es' ? sys.name.es : sys.name.en;
+        priorities.push({
+          title:
+            language === 'es'
+              ? `Completar ${sysName}`
+              : `Complete ${sysName}`,
+          subtitle:
+            language === 'es'
+              ? `No tienes marcadores de ${sysName}. Agrega estos análisis para una visión completa.`
+              : `You have no ${sysName} markers yet. Add these tests for a complete picture.`,
+          impact:
+            language === 'es'
+              ? 'Visión más completa de tu salud'
+              : 'More complete health picture',
+          icon: SYSTEM_EMOJI_MAP[sys.id] || '🔬',
+        });
+      }
+    }
+  }
+
+  return priorities.slice(0, 3);
 }

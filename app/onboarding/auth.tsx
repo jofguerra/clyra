@@ -6,10 +6,12 @@ import Button from '../../components/ui/Button';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { useStore } from '../../hooks/useStore';
+import { useT } from '../../hooks/useT';
 
 export default function AuthScreen() {
     const router = useRouter();
     const setHasCompletedOnboarding = useStore((state) => state.setHasCompletedOnboarding);
+    const t = useT();
 
     const handleLogin = () => {
         setHasCompletedOnboarding(true);
@@ -18,23 +20,23 @@ export default function AuthScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <AppHeader showBack onBack={() => router.back()} title="Crear Cuenta" />
+            <AppHeader showBack onBack={() => router.back()} title={t('authCreateAccount')} />
 
             <View style={styles.content}>
-                <Text style={styles.headline}>Únete a VitalIQ</Text>
-                <Text style={styles.subheadline}>Guarda tus datos de forma segura para siempre.</Text>
+                <Text style={styles.headline}>{t('authJoinClyra')}</Text>
+                <Text style={styles.subheadline}>{t('authSaveData')}</Text>
 
                 <View style={styles.form}>
-                    <Text style={styles.label}>Correo Electrónico</Text>
+                    <Text style={styles.label}>{t('authEmail')}</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="tu@email.com"
                         placeholderTextColor={Colors.mutedForeground}
                         keyboardType="email-address"
-                        autoCapitalization="none"
+                        autoCapitalize="none"
                     />
 
-                    <Text style={styles.label}>Contraseña</Text>
+                    <Text style={styles.label}>{t('authPassword')}</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="••••••••"
@@ -44,14 +46,14 @@ export default function AuthScreen() {
                 </View>
 
                 <Button
-                    title="Crear Cuenta"
+                    title={t('authCreateAccount')}
                     onPress={handleLogin}
                     size="lg"
                     style={styles.button}
                 />
 
                 <Button
-                    title="Ya tengo cuenta (Iniciar sesión)"
+                    title={t('authHaveAccount')}
                     onPress={handleLogin}
                     variant="ghost"
                     size="md"

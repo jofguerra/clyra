@@ -1,48 +1,56 @@
-// VitalIQ Color System — aligned with Stitch/Material You design tokens
+// Clyra Color System — aligned with Stitch/Material You design tokens
 export const Colors = {
     // Core
-    primary: '#0058be',
-    primaryForeground: '#ffffff',
-    background: '#f6fafe',
-    foreground: '#171c1f',
+    primary: '#0D9488',
+    primaryForeground: '#FFFFFF',
+    background: '#FAFBFC',
+    foreground: '#1A1D23',
 
     // Surfaces
-    surface: '#f6fafe',
-    surfaceLow: '#f0f4f8',
-    surfaceMid: '#eaeef2',
-    surfaceHigh: '#e4e9ed',
-    surfaceHighest: '#dfe3e7',
+    surface: '#FFFFFF',
+    surfaceLow: '#F7F8FA',
+    surfaceMid: '#F4F5F7',
+    surfaceHigh: '#F1F3F5',
+    surfaceHighest: '#E8ECEF',
 
     // Text
-    mutedForeground: '#424754',
-    outline: '#727785',
-    outlineVariant: '#c2c6d6',
+    mutedForeground: '#6B7280',
+    outline: '#9CA3AF',
+    outlineVariant: '#D1D5DB',
 
     // Secondary
-    secondary: '#505f76',
-    secondaryContainer: '#d0e1fb',
+    secondary: '#E6F7F5',
+    secondaryContainer: '#CCF0EC',
 
     // Status colors
-    optimal: '#006947',        // tertiary (green)
-    optimalContainer: '#00855b',
-    borderline: '#ca8a04',     // yellow-600
-    attention: '#ba1a1a',      // error red
+    optimal: '#059669',        // tertiary (green)
+    optimalContainer: '#10B981',
+    borderline: '#D97706',     // warm amber
+    attention: '#DC2626',      // soft red
 
     // Semantic aliases
-    border: '#c2c6d6',
-    muted: '#f0f4f8',
+    border: '#E8ECEF',
+    muted: '#F1F3F5',
 
     // Opacity variants
-    primary10: 'rgba(0, 88, 190, 0.1)',
-    primary15: 'rgba(0, 88, 190, 0.15)',
-    primaryContainer: 'rgba(33, 112, 228, 0.15)',
-    optimal10: 'rgba(0, 105, 71, 0.1)',
-    borderline10: 'rgba(202, 138, 4, 0.1)',
-    attention10: 'rgba(186, 26, 26, 0.1)',
+    primary10: '#0D948815',
+    primary15: '#0D948825',
+    primaryContainer: '#0D948820',
+    optimal10: '#05966915',
+    borderline10: '#D9770615',
+    attention10: '#DC262615',
 
     // Shadows
-    shadowSm: 'rgba(23, 28, 31, 0.04)',
-    shadowMd: 'rgba(23, 28, 31, 0.06)',
-    shadowLg: 'rgba(23, 28, 31, 0.08)',
-    shadowGlow: 'rgba(0, 88, 190, 0.15)',
+    shadowSm: 'rgba(26, 29, 35, 0.04)',
+    shadowMd: 'rgba(26, 29, 35, 0.06)',
+    shadowLg: 'rgba(26, 29, 35, 0.08)',
+    shadowGlow: 'rgba(13, 148, 136, 0.15)',
+
+    // Gamification
+    gold: '#F59E0B',
+    gold10: 'rgba(245, 158, 11, 0.1)',
+    purple: '#7C3AED',
+    purple10: 'rgba(124, 58, 237, 0.1)',
+    elite: '#F59E0B',
+    elite10: 'rgba(245, 158, 11, 0.12)',
 };

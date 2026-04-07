@@ -1,12 +1,19 @@
+import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
-import { Heart, FlaskConical, TrendingUp, Settings } from 'lucide-react-native';
+import { Heart, FlaskConical, TrendingUp, Settings, Target } from 'lucide-react-native';
 import { Colors } from '../../constants/colors';
 import { View, StyleSheet, Platform } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useT } from '../../hooks/useT';
+import { useStore } from '../../hooks/useStore';
 
 export default function TabLayout() {
     const t = useT();
+    const updateStreak = useStore((s) => s.updateStreak);
+
+    useEffect(() => {
+        updateStreak();
+    }, [updateStreak]);
 
     return (
         <Tabs
@@ -32,7 +39,7 @@ export default function TabLayout() {
                 tabBarActiveBackgroundColor: 'transparent',
             }}>
 
-            {/* Tab 1: Health — main dashboard */}
+            {/* Tab 1: Health — clean dashboard */}
             <Tabs.Screen
                 name="index"
                 options={{
@@ -47,7 +54,21 @@ export default function TabLayout() {
                 }}
             />
 
-            {/* Tab 2: Trends — progress & what's improving/declining */}
+            {/* Tab 2: Activity — gamification, priorities, missions */}
+            <Tabs.Screen
+                name="activity"
+                options={{
+                    title: t('tabActions'),
+                    tabBarIcon: ({ color, focused }) => (
+                        <Target
+                            color={focused ? Colors.primary : '#9ba3af'}
+                            size={23}
+                        />
+                    ),
+                }}
+            />
+
+            {/* Tab 3: Trends — progress & what's improving/declining */}
             <Tabs.Screen
                 name="progress"
                 options={{
@@ -61,7 +82,7 @@ export default function TabLayout() {
                 }}
             />
 
-            {/* Tab 3: Tests — upload + history + edit */}
+            {/* Tab 4: Tests — upload + history + edit */}
             <Tabs.Screen
                 name="upload"
                 options={{
@@ -76,7 +97,7 @@ export default function TabLayout() {
                 }}
             />
 
-            {/* Tab 4: Settings */}
+            {/* Tab 5: Settings */}
             <Tabs.Screen
                 name="settings"
                 options={{

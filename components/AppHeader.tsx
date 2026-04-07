@@ -27,7 +27,7 @@ export default function AppHeader({ title, showBack, onBack, rightElement }: App
                             <Activity color={Colors.primaryForeground} size={16} />
                         </View>
                     )}
-                    {!showBack && <Text style={styles.logoText}>VitalIQ</Text>}
+                    {!showBack && <Text style={styles.logoText}>Clyra</Text>}
                 </View>
 
                 {title && (

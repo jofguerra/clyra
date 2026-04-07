@@ -71,10 +71,11 @@ function RangeBar({ status, value, referenceRange, t }: {
 
 // ─── History timeline row ─────────────────────────────────────────────────────
 
-function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language }: {
+function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language, allValues }: {
   date: string; value: string | number; unit: string;
   status: string; isFirst: boolean; isLast: boolean;
   t: ReturnType<typeof useT>; language: string;
+  allValues: number[];
 }) {
   const configs = {
     normal:     { color: Colors.optimal,    bg: '#e8f5ee', label: t('statusNormal') },
@@ -84,6 +85,13 @@ function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language }
   };
   const cfg = configs[status as keyof typeof configs] ?? configs.normal;
   const timeStr = new Date(date).toLocaleDateString(language === 'es' ? 'es' : 'en', { month: 'long', year: 'numeric' });
+
+  // Calculate proportional bar width relative to all history values
+  const numericVal = parseFloat(String(value));
+  const maxVal = Math.max(...allValues);
+  const barPercent = !isNaN(numericVal) && maxVal > 0
+    ? Math.min(Math.max((numericVal / maxVal) * 100, 15), 100)
+    : 0;
 
   return (
     <View style={styles.timelineRow}>
@@ -110,6 +118,15 @@ function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language }
             </View>
           </View>
         </View>
+        {barPercent > 0 && (
+          <View style={{
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: cfg.color,
+            width: `${barPercent}%` as any,
+            marginTop: 6,
+          }} />
+        )}
       </View>
     </View>
   );
@@ -406,6 +423,12 @@ export default function BiomarkerDetailScreen() {
   const foodsToEat = knowledge?.foodsToEat?.[language];
   const foodsToAvoid = knowledge?.foodsToAvoid?.[language];
 
+  // Optimal range (functional / evidence-based, tighter than lab reference)
+  const optimalRangeData = knowledge?.optimalRange;
+  const optimalRange = optimalRangeData
+    ? (userSex === 'male' ? optimalRangeData.male : userSex === 'female' ? optimalRangeData.female : null) ?? optimalRangeData.general ?? null
+    : null;
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
@@ -413,7 +436,7 @@ export default function BiomarkerDetailScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={20} color={Colors.foreground} />
         </TouchableOpacity>
-        <Text style={styles.headerLogo}>VitalIQ</Text>
+        <Text style={styles.headerLogo}>Clyra</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -421,9 +444,9 @@ export default function BiomarkerDetailScreen() {
 
         {/* ── Hero ── */}
         <View style={styles.hero}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
+          <View style={{ flex: 1, paddingRight: 16 }}>
             {simpleName && (
-              <Text style={styles.heroSimpleName}>{knowledge!.emoji}  {simpleName}</Text>
+              <Text style={styles.heroSimpleName} numberOfLines={2}>{knowledge!.emoji}  {simpleName}</Text>
             )}
             <Text style={styles.heroName}>{biomarkerData.name}</Text>
             {lastTestDate && (
@@ -463,7 +486,14 @@ export default function BiomarkerDetailScreen() {
         {plainMessage && (
           <View style={[styles.messageCard, { backgroundColor: cfg.bg, borderColor: cfg.color + '30' }]}>
             <CircleCheck size={18} color={cfg.color} style={{ marginTop: 1 }} />
-            <Text style={[styles.messageText, { color: Colors.foreground }]}>{plainMessage}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.messageText, { color: Colors.foreground }]}>{plainMessage}</Text>
+              {(biomarkerData.status === 'high' || biomarkerData.status === 'low') && (
+                <Text style={[styles.messageText, { color: Colors.mutedForeground, fontSize: 12, marginTop: 6 }]}>
+                  {t('disclaimerCritical')}
+                </Text>
+              )}
+            </View>
           </View>
         )}
 
@@ -504,6 +534,16 @@ export default function BiomarkerDetailScreen() {
               <Text style={styles.refValue}>{biomarkerData.referenceRange} {biomarkerData.unit}</Text>
             </View>
           )}
+          {optimalRange && (
+            <View style={styles.refRow}>
+              <Text style={[styles.refLabel, { color: Colors.primary }]}>
+                {t('optimalRange')} ✦
+              </Text>
+              <Text style={[styles.refValue, { color: Colors.primary }]}>
+                {optimalRange.min}–{optimalRange.max} {biomarkerData.unit}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── History timeline ── */}
@@ -517,40 +557,24 @@ export default function BiomarkerDetailScreen() {
               </View>
             </View>
 
-            {/* Mini bar chart */}
-            {history.length > 1 && (
-              <View style={styles.miniChart}>
-                {[...history].reverse().map(({ biomarker }, i) => {
-                  const v = parseFloat(String(biomarker.value));
-                  const allVals = history.map(h => parseFloat(String(h.biomarker.value))).filter(n => !isNaN(n));
-                  const min = Math.min(...allVals);
-                  const max = Math.max(...allVals);
-                  const barH = ((v - min) / (max - min || 1)) * 56 + 14;
-                  const statusCfg = { normal: Colors.optimal, borderline: Colors.borderline, high: Colors.attention, low: Colors.attention };
-                  const barColor = statusCfg[biomarker.status as keyof typeof statusCfg] ?? Colors.outline;
-                  return (
-                    <View key={i} style={styles.barWrap}>
-                      <View style={[styles.bar, { height: barH, backgroundColor: barColor }]} />
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-
             <View style={styles.timeline}>
-              {history.map(({ date, biomarker }, i) => (
-                <TimelineRow
-                  key={date + i}
-                  date={date}
-                  value={biomarker.value}
-                  unit={biomarker.unit}
-                  status={biomarker.status}
-                  isFirst={i === 0}
-                  isLast={i === history.length - 1}
-                  t={t}
-                  language={language}
-                />
-              ))}
+              {(() => {
+                const allValues = history.map(h => parseFloat(String(h.biomarker.value))).filter(n => !isNaN(n));
+                return history.map(({ date, biomarker }, i) => (
+                  <TimelineRow
+                    key={date + i}
+                    date={date}
+                    value={biomarker.value}
+                    unit={biomarker.unit}
+                    status={biomarker.status}
+                    isFirst={i === 0}
+                    isLast={i === history.length - 1}
+                    t={t}
+                    language={language}
+                    allValues={allValues}
+                  />
+                ));
+              })()}
             </View>
           </View>
         )}
@@ -655,10 +679,10 @@ const styles = StyleSheet.create({
     fontFamily: Typography.families.body,
     fontSize: 11, color: Colors.outline, fontWeight: '500',
   },
-  heroRight: { alignItems: 'flex-end' },
+  heroRight: { alignItems: 'flex-end', minWidth: 120, flexShrink: 0 },
   heroValue: {
     fontFamily: Typography.families.display,
-    fontSize: 52, fontWeight: '800', lineHeight: 56,
+    fontSize: 30, fontWeight: '800', lineHeight: 34,
   },
   heroUnit: {
     fontFamily: Typography.families.body,
@@ -815,14 +839,6 @@ const styles = StyleSheet.create({
     fontFamily: Typography.families.body,
     fontSize: 11, fontWeight: '700', color: Colors.primary,
   },
-
-  // Mini chart
-  miniChart: {
-    flexDirection: 'row', alignItems: 'flex-end',
-    height: 72, gap: 4, marginBottom: 16, paddingHorizontal: 4,
-  },
-  barWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: 72 },
-  bar: { width: '60%', borderRadius: 4, minHeight: 8 },
 
   // Timeline
   timeline: { gap: 0 },

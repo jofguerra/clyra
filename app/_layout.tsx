@@ -7,6 +7,7 @@ export default function RootLayout() {
             <Stack.Screen name="onboarding" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="biomarker/[name]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
             <Stack.Screen name="+not-found" />
         </Stack>
     );

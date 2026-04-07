@@ -7,6 +7,7 @@ import {
 import { Send, Bot, User, ScanLine } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AppHeader from '../../components/AppHeader';
+import ProGate from '../../components/ProGate';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { useStore } from '../../hooks/useStore';
@@ -72,11 +73,13 @@ export default function ChatScreen() {
   const age = useStore(s => s.age);
   const sex = useStore(s => s.sex);
   const healthGoals = useStore(s => s.healthGoals);
+  const isPro = useStore(s => s.isPro);
   const hasBiomarkers = biomarkers.length > 0;
 
-  // Build welcome message based on whether user has data
+  // Build welcome message with disclaimer
+  const disclaimer = t('disclaimerChat');
   const welcomeText = hasBiomarkers
-    ? t('chatWelcome', { n: biomarkers.length })
+    ? `${t('chatWelcome', { n: biomarkers.length })}\n\n⚕️ ${disclaimer}`
     : t('chatWelcomeNoData');
 
   const [messages, setMessages] = useState<DisplayMessage[]>([
@@ -149,6 +152,16 @@ export default function ChatScreen() {
     t('chatQuick3'),
     t('chatQuick4'),
   ];
+
+  // Gate chat behind Pro (free users get a preview message only)
+  if (!isPro && hasBiomarkers) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <AppHeader title={t('chatTitle')} />
+        <ProGate feature={language === 'es' ? 'Chat de Salud con IA' : 'AI Health Chat'} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

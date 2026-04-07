@@ -1,28 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Shield, Eye, Lock, Bell, Trash2, Download, Globe, Target, Check } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { Shield, Eye, Lock, Bell, Trash2, Download, Globe, Crown, FileText } from 'lucide-react-native';
 import AppHeader from '../../components/AppHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
 import Button from '../../components/ui/Button';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
-import { useStore, HealthGoal } from '../../hooks/useStore';
+import { useStore } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
-import { TranslationKey } from '../../constants/i18n';
+import { shareHealthReport } from '../../services/pdfExport';
 
-type GoalDef = { id: HealthGoal; emoji: string; labelKey: TranslationKey };
-const GOAL_DEFS: GoalDef[] = [
-  { id: 'mood',            emoji: '☀️', labelKey: 'goalMood' },
-  { id: 'metabolism',      emoji: '🔥', labelKey: 'goalMetabolism' },
-  { id: 'performance',     emoji: '💪', labelKey: 'goalPerformance' },
-  { id: 'testosterone',    emoji: '🧬', labelKey: 'goalTestosterone' },
-  { id: 'female_hormones', emoji: '🌸', labelKey: 'goalFemaleHormones' },
-  { id: 'longevity',       emoji: '🧠', labelKey: 'goalLongevity' },
-  { id: 'preventative',    emoji: '🛡️', labelKey: 'goalPreventative' },
-];
 
 export default function SettingsScreen() {
+    const router = useRouter();
     const [dataVisible, setDataVisible] = useState(true);
     const [notifications, setNotifications] = useState(true);
     const clearAllData = useStore((state) => state.clearAllData);
@@ -30,8 +22,16 @@ export default function SettingsScreen() {
     const userName = useStore((state) => state.userName);
     const language = useStore((state) => state.language);
     const setLanguage = useStore((state) => state.setLanguage);
-    const healthGoals = useStore((state) => state.healthGoals);
-    const setHealthGoals = useStore((state) => state.setHealthGoals);
+    const isPro = useStore((state) => state.isPro);
+    const subscriptionPlan = useStore((state) => state.subscriptionPlan);
+    const subscriptionExpiresAt = useStore((state) => state.subscriptionExpiresAt);
+    const subscriptionCancelled = useStore((state) => state.subscriptionCancelled);
+    const setSubscriptionCancelled = useStore((state) => state.setSubscriptionCancelled);
+    const age = useStore((state) => state.age);
+    const sex = useStore((state) => state.sex);
+    const biomarkers = useStore((state) => state.biomarkers);
+    const healthScore = useStore((state) => state.healthScore);
+    const [sharingReport, setSharingReport] = useState(false);
     const t = useT();
 
     const handleExport = () => {
@@ -60,6 +60,53 @@ export default function SettingsScreen() {
         );
     };
 
+    const formattedExpiry = subscriptionExpiresAt
+        ? new Date(subscriptionExpiresAt).toLocaleDateString(language === 'es' ? 'es' : 'en', {
+            day: 'numeric', month: 'long', year: 'numeric',
+          })
+        : '';
+
+    const handleCancelSubscription = () => {
+        Alert.alert(
+            t('cancelConfirmTitle'),
+            t('cancelConfirmMsg', { date: formattedExpiry }),
+            [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                    text: t('cancelSubscription'),
+                    style: 'destructive',
+                    onPress: () => setSubscriptionCancelled(true),
+                },
+            ]
+        );
+    };
+
+    const handleReactivate = () => {
+        setSubscriptionCancelled(false);
+    };
+
+    const handleShareWithDoctor = async () => {
+        if (biomarkers.length === 0) {
+            Alert.alert(t('noDataToShare'), t('noDataToShareMsg'));
+            return;
+        }
+        setSharingReport(true);
+        try {
+            await shareHealthReport({
+                userName,
+                age,
+                sex,
+                language,
+                healthScore,
+                biomarkers,
+            });
+        } catch (err) {
+            console.warn('[Clyra] PDF share error:', err);
+        } finally {
+            setSharingReport(false);
+        }
+    };
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <AppHeader title={t('settingsAndPrivacy')} />
@@ -81,6 +128,89 @@ export default function SettingsScreen() {
                         </View>
                     </View>
                 ) : null}
+
+                {/* Subscription */}
+                {isPro ? (
+                    <View style={styles.proBanner}>
+                        <Crown size={18} color={Colors.gold} />
+                        <Text style={styles.proBannerText}>{t('subAlreadyPro')}</Text>
+                    </View>
+                ) : (
+                    <TouchableOpacity
+                        style={styles.goProBanner}
+                        activeOpacity={0.85}
+                        onPress={() => router.push('/subscription' as any)}
+                    >
+                        <Crown size={20} color={Colors.gold} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.goProTitle}>{t('subGoPro')}</Text>
+                            <Text style={styles.goProSub}>{t('subSubtitle')}</Text>
+                        </View>
+                        <View style={styles.goProBtn}>
+                            <Text style={styles.goProBtnText}>{t('subGoPro')}</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
+
+                {/* Manage Subscription */}
+                {isPro && (
+                    <View style={styles.section}>
+                        <View style={styles.sectionHeader}>
+                            <Crown size={20} color={Colors.gold} />
+                            <Text style={styles.sectionTitle}>{t('manageSubscription')}</Text>
+                        </View>
+
+                        <View style={styles.dataActions}>
+                            <View style={styles.dataActionRow}>
+                                <View style={styles.dataActionContent}>
+                                    <Text style={styles.settingTitle}>{t('currentPlan')}</Text>
+                                    <Text style={styles.settingDesc}>
+                                        {subscriptionPlan === 'annual' ? t('subAnnual') : t('subMonthly')}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.dataActionDivider} />
+
+                            {subscriptionCancelled ? (
+                                <>
+                                    <View style={{ marginBottom: 12 }}>
+                                        <Text style={[styles.settingTitle, { color: Colors.attention }]}>
+                                            {t('subscriptionCancelled')}
+                                        </Text>
+                                        <Text style={styles.settingDesc}>
+                                            {t('cancelledMsg', { date: formattedExpiry })}
+                                        </Text>
+                                    </View>
+                                    <Button
+                                        title={t('reactivate')}
+                                        variant="outline"
+                                        size="sm"
+                                        onPress={handleReactivate}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <View style={{ marginBottom: 12 }}>
+                                        <Text style={styles.settingDesc}>
+                                            {t('renewsOn', { date: formattedExpiry })}
+                                        </Text>
+                                    </View>
+                                    <Button
+                                        title={t('cancelSubscription')}
+                                        variant="destructive"
+                                        size="sm"
+                                        onPress={handleCancelSubscription}
+                                    />
+                                </>
+                            )}
+
+                            <View style={styles.dataActionDivider} />
+
+                            <Text style={styles.storeNote}>{t('manageViaStore')}</Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Language Section */}
                 <View style={styles.section}>
@@ -107,38 +237,6 @@ export default function SettingsScreen() {
                                 🇪🇸  {t('spanish')}
                             </Text>
                         </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* Health Goals Section */}
-                <View style={styles.section}>
-                    <View style={styles.sectionHeader}>
-                        <Target size={20} color={Colors.foreground} />
-                        <Text style={styles.sectionTitle}>{t('goalsTitle')}</Text>
-                    </View>
-                    <View style={styles.goalsGrid}>
-                        {GOAL_DEFS.map(goal => {
-                            const isSelected = healthGoals.includes(goal.id);
-                            return (
-                                <TouchableOpacity
-                                    key={goal.id}
-                                    style={[styles.goalChip, isSelected && styles.goalChipActive]}
-                                    onPress={() => {
-                                        const next = isSelected
-                                            ? healthGoals.filter(g => g !== goal.id)
-                                            : [...healthGoals, goal.id];
-                                        setHealthGoals(next);
-                                    }}
-                                    activeOpacity={0.75}
-                                >
-                                    <Text style={styles.goalChipEmoji}>{goal.emoji}</Text>
-                                    <Text style={[styles.goalChipText, isSelected && styles.goalChipTextActive]}>
-                                        {t(goal.labelKey)}
-                                    </Text>
-                                    {isSelected && <Check size={12} color={Colors.primary} strokeWidth={3} />}
-                                </TouchableOpacity>
-                            );
-                        })}
                     </View>
                 </View>
 
@@ -197,6 +295,26 @@ export default function SettingsScreen() {
                     <View style={styles.dataActions}>
                         <View style={styles.dataActionRow}>
                             <View style={styles.dataActionContent}>
+                                <Text style={styles.settingTitle}>{t('shareWithDoctor')}</Text>
+                                <Text style={styles.settingDesc}>
+                                    {language === 'es'
+                                        ? 'Genera un PDF profesional con tus resultados'
+                                        : 'Generate a professional PDF with your results'}
+                                </Text>
+                            </View>
+                            <Button
+                                title={sharingReport ? t('generatingReport') : t('shareWithDoctor')}
+                                variant="outline"
+                                size="sm"
+                                onPress={handleShareWithDoctor}
+                                icon={<FileText size={16} color={Colors.primary} />}
+                            />
+                        </View>
+
+                        <View style={styles.dataActionDivider} />
+
+                        <View style={styles.dataActionRow}>
+                            <View style={styles.dataActionContent}>
                                 <Text style={styles.settingTitle}>{t('exportData')}</Text>
                                 <Text style={styles.settingDesc}>{t('exportDataDesc')}</Text>
                             </View>
@@ -235,22 +353,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
     langRow: { flexDirection: 'row', gap: 12 },
 
-    // Goals grid
-    goalsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    goalChip: {
-        flexDirection: 'row', alignItems: 'center', gap: 5,
-        paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20,
-        backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
-    },
-    goalChipActive: {
-        backgroundColor: Colors.primary10, borderColor: Colors.primary + '60',
-    },
-    goalChipEmoji: { fontSize: 14 },
-    goalChipText: {
-        fontFamily: Typography.families.body,
-        fontSize: 12, fontWeight: '600', color: Colors.foreground,
-    },
-    goalChipTextActive: { color: Colors.primary },
     langBtn: {
         flex: 1, paddingVertical: 14, paddingHorizontal: 16,
         borderRadius: 16, borderWidth: 2, borderColor: Colors.border,
@@ -325,6 +427,51 @@ const styles = StyleSheet.create({
     dataActionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     dataActionContent: { flex: 1, marginRight: 16 },
     dataActionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginVertical: 16 },
+    // Subscription
+    proBanner: {
+        flexDirection: 'row', alignItems: 'center', gap: 10,
+        backgroundColor: Colors.gold + '15', borderRadius: 14,
+        padding: 14, marginBottom: 24,
+        borderWidth: 1, borderColor: Colors.gold + '30',
+    },
+    proBannerText: {
+        fontFamily: Typography.families.body,
+        fontSize: 14, fontWeight: '700', color: Colors.gold,
+    },
+    goProBanner: {
+        flexDirection: 'row', alignItems: 'center', gap: 12,
+        backgroundColor: '#fff', borderRadius: 18, padding: 16,
+        marginBottom: 24,
+        borderWidth: 1.5, borderColor: Colors.gold + '40',
+        shadowColor: Colors.gold, shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12, shadowRadius: 12, elevation: 3,
+    },
+    goProTitle: {
+        fontFamily: Typography.families.display,
+        fontSize: 16, fontWeight: '800', color: Colors.foreground,
+        marginBottom: 2,
+    },
+    goProSub: {
+        fontFamily: Typography.families.body,
+        fontSize: 11, color: Colors.mutedForeground, lineHeight: 15,
+    },
+    goProBtn: {
+        backgroundColor: Colors.gold, borderRadius: 10,
+        paddingHorizontal: 14, paddingVertical: 8,
+    },
+    goProBtnText: {
+        fontFamily: Typography.families.body,
+        fontSize: 12, fontWeight: '800', color: '#fff',
+    },
+
+    storeNote: {
+        fontFamily: Typography.families.body,
+        fontSize: Typography.sizes.xs,
+        color: Colors.mutedForeground,
+        lineHeight: 16,
+        fontStyle: 'italic',
+    },
+
     footerDisclaimer: {
         fontFamily: Typography.families.body,
         fontSize: Typography.sizes.xs, color: Colors.mutedForeground,
