@@ -259,6 +259,9 @@ export default function DashboardScreen() {
           </View>
         </AnimatedSection>
 
+        {/* ── Content area with white background ── */}
+        <View style={styles.contentArea}>
+
         {/* ── 1. Welcome ── */}
         <AnimatedSection delay={100} style={styles.greetingSection}>
           <Text style={styles.greetingName}>
@@ -425,6 +428,7 @@ export default function DashboardScreen() {
             </AnimatedSection>
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
@@ -433,24 +437,31 @@ export default function DashboardScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: Colors.background },
+  safeArea: { flex: 1, backgroundColor: '#D6EAF8' },
   scroll: { flex: 1 },
-  content: { paddingBottom: 100 },
+  content: { paddingBottom: 100, backgroundColor: '#D6EAF8' },
 
   // Hero Lottie — full bleed to top edge
-  heroSection: { alignItems: 'center', marginBottom: -10 },
+  heroSection: { alignItems: 'center' },
   heroContainer: {
-    width: '100%', aspectRatio: 1123 / 750, overflow: 'hidden',
+    width: '100%', aspectRatio: 1123 / 780, overflow: 'visible',
   },
-  heroLottie: { width: '100%', height: '120%', marginTop: '-5%' },
+  heroLottie: { width: '100%', height: '115%', marginTop: '-3%' },
   heroCurve: {
-    position: 'absolute', bottom: -2, left: -5, right: -5, height: 30,
+    position: 'absolute', bottom: -28, left: 0, right: 0, height: 32,
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 9999, borderTopRightRadius: 9999,
+    borderTopLeftRadius: 600, borderTopRightRadius: 600,
+  },
+
+  // Content below hero — white bg
+  contentArea: {
+    backgroundColor: Colors.background,
+    borderTopLeftRadius: 0, borderTopRightRadius: 0,
+    minHeight: 600,
   },
 
   // Greeting
-  greetingSection: { marginBottom: 16, alignItems: 'center', paddingHorizontal: 20 },
+  greetingSection: { marginBottom: 16, alignItems: 'center', paddingHorizontal: 20, paddingTop: 20 },
   greetingName: {
     fontFamily: Typography.families.display,
     fontSize: 26, fontWeight: '800', color: Colors.foreground,
