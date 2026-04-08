@@ -446,11 +446,11 @@ const styles = StyleSheet.create({
   },
   heroLottie: { width: '100%', height: '115%', marginTop: '-3%' },
 
-  // Content below hero — white bg with curved top
+  // Content below hero — white bg with big curved semicircle top
   contentArea: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    marginTop: -24,
+    borderTopLeftRadius: 40, borderTopRightRadius: 40,
+    marginTop: -36,
     minHeight: 600,
   },
 
