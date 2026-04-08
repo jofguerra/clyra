@@ -451,18 +451,15 @@ const styles = StyleSheet.create({
   },
   heroLottie: { width: '100%', height: '115%', marginTop: '-3%' },
 
-  // Downward curve — sky-colored shape with rounded bottom that
-  // sits between hero and content, making the white "bow down"
+  // Sky-colored arc that curves DOWN over the white content
   curveWrapper: {
     backgroundColor: Colors.background,
-    overflow: 'hidden',
-    marginTop: -2,
   },
   curveShape: {
-    height: 44,
+    height: 40,
     backgroundColor: '#D6EAF8',
-    borderTopLeftRadius: 600,
-    borderTopRightRadius: 600,
+    borderBottomLeftRadius: 600,
+    borderBottomRightRadius: 600,
   },
 
   // Content below curve — white
