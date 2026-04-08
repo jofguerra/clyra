@@ -11,6 +11,7 @@ import { useStore, ExamSession } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
 import { Biomarker } from '../../services/openai';
 import { computeHealthScore } from '../../constants/biomarkerSystems';
+import { translateBiomarkerValue } from '../../constants/valueTranslations';
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ function BiomarkerRow({
         ) : (
           <>
             <Text style={[styles.bioValue, { color }]}>
-              {biomarker.value} {biomarker.unit}
+              {translateBiomarkerValue(biomarker.value, lang)} {biomarker.unit}
             </Text>
             <View style={[styles.statusChip, { backgroundColor: color }]}>
               <Text style={styles.statusChipText}>{statusLabel}</Text>

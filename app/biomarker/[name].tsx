@@ -18,6 +18,7 @@ import { Biomarker, getPersonalizedBiomarkerInsight } from '../../services/opena
 import {
   getBiomarkerKnowledge, getStatusMessage, getRetestStatus,
 } from '../../constants/biomarkerKnowledge';
+import { translateBiomarkerValue } from '../../constants/valueTranslations';
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -33,9 +34,9 @@ function buildStatusCfg(status: string, t: ReturnType<typeof useT>) {
 
 // ─── Range gradient bar ────────────────────────────────────────────────────────
 
-function RangeBar({ status, value, referenceRange, t }: {
+function RangeBar({ status, value, referenceRange, t, language }: {
   status: string; value: string | number; referenceRange?: string;
-  t: ReturnType<typeof useT>;
+  t: ReturnType<typeof useT>; language: string;
 }) {
   const pos = { low: 0.08, normal: 0.45, borderline: 0.72, high: 0.92 }[status] ?? 0.5;
   const zones = [
@@ -53,7 +54,7 @@ function RangeBar({ status, value, referenceRange, t }: {
       />
       {/* Marker */}
       <View style={[styles.markerWrap, { left: `${pos * 100}%` as any }]}>
-        <View style={styles.markerBubble}><Text style={styles.markerText}>{value}</Text></View>
+        <View style={styles.markerBubble}><Text style={styles.markerText}>{translateBiomarkerValue(value, language)}</Text></View>
         <View style={styles.markerLine} />
       </View>
       {/* Zone labels */}
@@ -111,7 +112,7 @@ function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language, 
           </View>
           <View style={styles.timelineRight}>
             <Text style={[styles.timelineValue, { color: cfg.color }]}>
-              {value} <Text style={styles.timelineUnit}>{unit}</Text>
+              {translateBiomarkerValue(value, language)} <Text style={styles.timelineUnit}>{unit}</Text>
             </Text>
             <View style={[styles.timelineChip, { backgroundColor: cfg.bg }]}>
               <Text style={[styles.timelineChipText, { color: cfg.color }]}>{cfg.label}</Text>
@@ -465,7 +466,7 @@ export default function BiomarkerDetailScreen() {
           </View>
           <View style={styles.heroRight}>
             <Text style={[styles.heroValue, { color: cfg.color }]}>
-              {biomarkerData.value}
+              {translateBiomarkerValue(biomarkerData.value, language)}
             </Text>
             <Text style={styles.heroUnit}>{biomarkerData.unit}</Text>
             <View style={[styles.statusBadge, { backgroundColor: cfg.badgeBg }]}>
@@ -527,6 +528,7 @@ export default function BiomarkerDetailScreen() {
             value={biomarkerData.value}
             referenceRange={biomarkerData.referenceRange}
             t={t}
+            language={language}
           />
           {biomarkerData.referenceRange && (
             <View style={styles.refRow}>

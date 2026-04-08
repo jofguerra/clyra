@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Shield, Eye, Lock, Bell, Trash2, Download, Globe, Crown, FileText } from 'lucide-react-native';
+import { Shield, Eye, Lock, Bell, Trash2, Download, Globe, Crown, FileText, RefreshCw, User } from 'lucide-react-native';
 import AppHeader from '../../components/AppHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
@@ -11,6 +11,7 @@ import { Typography } from '../../constants/typography';
 import { useStore } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
 import { shareHealthReport } from '../../services/pdfExport';
+import { supabase } from '../../services/supabase';
 
 
 export default function SettingsScreen() {
@@ -32,7 +33,61 @@ export default function SettingsScreen() {
     const biomarkers = useStore((state) => state.biomarkers);
     const healthScore = useStore((state) => state.healthScore);
     const [sharingReport, setSharingReport] = useState(false);
+    const isGuest = useStore((state) => state.isGuest);
+    const authUserId = useStore((state) => state.authUserId);
+    const signOutUser = useStore((state) => state.signOutUser);
+    const lastSyncedAt = useStore((state) => state.lastSyncedAt);
+    const syncToCloud = useStore((state) => state.syncToCloud);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [userEmail, setUserEmail] = useState<string | null>(null);
     const t = useT();
+
+    useEffect(() => {
+        if (!isGuest && authUserId) {
+            supabase.auth.getUser().then(({ data }) => {
+                setUserEmail(data.user?.email ?? null);
+            });
+        } else {
+            setUserEmail(null);
+        }
+    }, [isGuest, authUserId]);
+
+    const handleSignOut = () => {
+        Alert.alert(
+            t('signOutBtn'),
+            t('signOutConfirm'),
+            [
+                { text: t('cancel'), style: 'cancel' },
+                {
+                    text: t('signOutBtn'),
+                    style: 'destructive',
+                    onPress: async () => {
+                        await signOutUser();
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleSyncNow = async () => {
+        setIsSyncing(true);
+        try {
+            await syncToCloud();
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const formatSyncTime = (iso: string | null): string => {
+        if (!iso) return t('neverSynced');
+        const diff = Date.now() - new Date(iso).getTime();
+        const mins = Math.floor(diff / 60_000);
+        if (mins < 1) return t('syncSuccess');
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return `${Math.floor(hours / 24)}d ago`;
+    };
 
     const handleExport = () => {
         if (sessions.length === 0) {
@@ -128,6 +183,65 @@ export default function SettingsScreen() {
                         </View>
                     </View>
                 ) : null}
+
+                {/* Account Section */}
+                <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                        <User size={20} color={Colors.foreground} />
+                        <Text style={styles.sectionTitle}>{t('accountSection')}</Text>
+                    </View>
+                    {isGuest ? (
+                        <View style={styles.dataActions}>
+                            <Button
+                                title={t('authCreateAccount')}
+                                size="lg"
+                                onPress={() => router.push('/onboarding/auth')}
+                                style={{ marginBottom: 12 }}
+                            />
+                            <Button
+                                title={t('authSignIn')}
+                                variant="outline"
+                                size="lg"
+                                onPress={() => router.push('/onboarding/auth')}
+                            />
+                        </View>
+                    ) : (
+                        <View style={styles.dataActions}>
+                            {userEmail && (
+                                <Text style={styles.settingDesc}>
+                                    {t('signedInAs')} {userEmail}
+                                </Text>
+                            )}
+                            <View style={styles.dataActionDivider} />
+                            <Button
+                                title={t('signOutBtn')}
+                                variant="destructive"
+                                size="sm"
+                                onPress={handleSignOut}
+                            />
+                        </View>
+                    )}
+                </View>
+
+                {/* Sync Status (authenticated users only) */}
+                {!isGuest && (
+                    <View style={styles.syncRow}>
+                        <RefreshCw size={16} color={Colors.mutedForeground} />
+                        <Text style={styles.syncText}>
+                            {t('lastSynced')}: {formatSyncTime(lastSyncedAt)}
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.syncBtn}
+                            activeOpacity={0.7}
+                            onPress={handleSyncNow}
+                            disabled={isSyncing}
+                        >
+                            <Text style={styles.syncBtnText}>
+                                {isSyncing ? t('syncing') : t('syncNow')}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {/* Subscription */}
                 {isPro ? (
@@ -364,6 +478,25 @@ const styles = StyleSheet.create({
         fontSize: 14, fontWeight: '600', color: Colors.mutedForeground,
     },
     langBtnTextActive: { color: Colors.primary },
+    syncRow: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        backgroundColor: Colors.surface, borderRadius: 12,
+        borderWidth: 1, borderColor: Colors.border,
+        padding: 12, marginBottom: 16,
+    },
+    syncText: {
+        flex: 1,
+        fontFamily: Typography.families.body,
+        fontSize: Typography.sizes.xs, color: Colors.mutedForeground,
+    },
+    syncBtn: {
+        backgroundColor: Colors.primary10, borderRadius: 8,
+        paddingHorizontal: 12, paddingVertical: 6,
+    },
+    syncBtnText: {
+        fontFamily: Typography.families.body,
+        fontSize: 12, fontWeight: '700', color: Colors.primary,
+    },
     profileRow: {
         flexDirection: 'row', alignItems: 'center', gap: 14,
         backgroundColor: Colors.surface, borderRadius: 16,

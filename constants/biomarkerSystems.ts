@@ -54,7 +54,7 @@ export const BODY_SYSTEMS: BodySystem[] = [
     shortName: { en: 'Liver', es: 'Hígado' },
     biomarkerNames: [
       'AST', 'ALT', 'GGT', 'Bilirrubina Total', 'Bilirrubina', 'Bilirrubina Directa',
-      'Albúmina', 'Fosfatasa Alcalina', 'Proteínas Totales',
+      'Albúmina', 'Fosfatasa Alcalina', 'Proteínas Totales', 'Globulina', 'Relación A/G',
       // Urine biomarkers
       'Bilis', 'Bilirrubina (Orina)', 'Bilirrubina en Orina', 'Urobilinógeno', 'Urobilinogeno',
     ],
@@ -85,6 +85,7 @@ export const BODY_SYSTEMS: BodySystem[] = [
     shortName: { en: 'Metabolic', es: 'Metabólico' },
     biomarkerNames: [
       'Glucosa', 'Glucosa en Ayunas', 'Hemoglobina A1c', 'HbA1c', 'Insulina', 'Péptido C',
+      'LDH', 'CPK', 'CK',
       // Urine biomarkers
       'Acetona', 'Cetonas', 'Cuerpos Cetónicos',
     ],
@@ -114,13 +115,16 @@ export const BODY_SYSTEMS: BodySystem[] = [
     name: { en: 'Kidneys', es: 'Riñones' },
     shortName: { en: 'Kidneys', es: 'Riñones' },
     biomarkerNames: [
-      'Creatinina', 'Ácido Úrico', 'Urea', 'BUN', 'Nitrógeno Ureico',
+      'Creatinina', 'Ácido Úrico', 'Urea', 'BUN', 'Nitrógeno Ureico', 'Nitrógeno de Urea',
       'Microalbúmina', 'Cistatina C', 'TFG', 'Sodio', 'Potasio', 'Cloro',
       // Urine biomarkers
       'Glucosa (Orina)', 'Glucosa en Orina', 'Albúmina (Orina)', 'Albúmina en Orina',
       'Nitratos', 'Nitritos', 'Nitratos / Nitritos',
       'Sangre Oculta', 'Sangre Oculta en Orina',
       'Glóbulos Blancos (Orina)', 'Leucocitos (Orina)', 'Leucocitos en Orina',
+      // Urine physical / microscopic
+      'Color (Orina)', 'Aspecto (Orina)', 'pH (Orina)', 'Densidad (Orina)',
+      'Células Epiteliales', 'Cristales', 'Cilindros', 'Bacterias', 'Levaduras',
       // Prostate / urological
       'PSA Total', 'PSA Libre', 'PSA',
     ],
@@ -185,8 +189,9 @@ export const BODY_SYSTEMS: BodySystem[] = [
     shortName: { en: 'Blood', es: 'Sangre' },
     biomarkerNames: [
       'Hemoglobina', 'Hematocrito', 'Leucocitos', 'Glóbulos Blancos', 'Plaquetas',
-      'VCM', 'HCM', 'Neutrófilos', 'Linfocitos', 'Monocitos',
+      'VCM', 'HCM', 'CHCM', 'RDW', 'Neutrófilos', 'Linfocitos', 'Monocitos',
       'Eosinófilos', 'Basófilos', 'Eritrocitos', 'Glóbulos Rojos',
+      'Segmentados', 'Bandas',
       'VSG', 'Velocidad de Sedimentación',
     ],
     cx: 62, cy: 172,
@@ -217,7 +222,7 @@ export const BODY_SYSTEMS: BodySystem[] = [
     biomarkerNames: [
       'Vitamina D', 'Vitamina B12', 'Vitamina B9', 'Ácido Fólico', 'Folato',
       'Vitamina A', 'Vitamina E',
-      'Ferritina', 'Hierro Sérico', 'Hierro', 'Transferrina',
+      'Ferritina', 'Hierro Sérico', 'Hierro', 'Transferrina', 'Saturación de Transferrina',
       'Calcio', 'Magnesio', 'Zinc', 'Fósforo',
     ],
     cx: 170, cy: 175,

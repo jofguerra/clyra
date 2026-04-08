@@ -5,6 +5,7 @@ import { Biomarker } from '../services/openai';
 import { computeHealthScore } from '../constants/biomarkerSystems';
 import { Lang } from '../constants/i18n';
 import { XP_ACTIONS } from '../constants/gamification';
+import { pushLocalToCloud, pullCloudToLocal, signOut as supabaseSignOut } from '../services/sync';
 
 export type HealthGoal =
   | 'mood'
@@ -26,6 +27,11 @@ export interface ExamSession {
 }
 
 interface UserState {
+  authUserId: string | null;
+  setAuthUserId: (id: string | null) => void;
+  isGuest: boolean;
+  setIsGuest: (val: boolean) => void;
+  deviceId: string;
   hasCompletedOnboarding: boolean;
   userName: string;
   age: string;
@@ -48,6 +54,8 @@ interface UserState {
   subscriptionPlan: 'monthly' | 'annual' | null;
   subscriptionExpiresAt: string | null;
   subscriptionCancelled: boolean;
+  // Sync
+  lastSyncedAt: string | null;
   // Actions
   setHasCompletedOnboarding: (val: boolean) => void;
   setUserName: (val: string) => void;
@@ -65,12 +73,20 @@ interface UserState {
   setTestReminderDays: (days: number) => void;
   setSubscription: (plan: 'monthly' | 'annual' | null, expiresAt: string | null) => void;
   setSubscriptionCancelled: (val: boolean) => void;
+  signOutUser: () => Promise<void>;
+  syncToCloud: () => Promise<void>;
+  syncFromCloud: () => Promise<void>;
   clearAllData: () => void;
 }
 
 export const useStore = create<UserState>()(
   persist(
     (set, get) => ({
+      authUserId: null,
+      setAuthUserId: (id) => set({ authUserId: id }),
+      isGuest: true,
+      setIsGuest: (val) => set({ isGuest: val }),
+      deviceId: Date.now().toString(36) + Math.random().toString(36).slice(2),
       hasCompletedOnboarding: false,
       userName: '',
       age: '',
@@ -93,6 +109,8 @@ export const useStore = create<UserState>()(
       subscriptionPlan: null,
       subscriptionExpiresAt: null,
       subscriptionCancelled: false,
+      // Sync
+      lastSyncedAt: null,
 
       setHasCompletedOnboarding: (val) => set({ hasCompletedOnboarding: val }),
       setUserName: (val) => set({ userName: val }),
@@ -250,7 +268,98 @@ export const useStore = create<UserState>()(
 
       setSubscriptionCancelled: (val) => set({ subscriptionCancelled: val }),
 
+      signOutUser: async () => {
+        try {
+          await supabaseSignOut();
+        } catch (err) {
+          console.warn('[Clyra] signOut failed:', err);
+        }
+        set({ isGuest: true, authUserId: null });
+      },
+
+      syncToCloud: async () => {
+        try {
+          const state = get();
+          await pushLocalToCloud({
+            userName: state.userName,
+            age: state.age,
+            sex: state.sex,
+            language: state.language,
+            healthGoals: state.healthGoals,
+            testReminderDays: state.testReminderDays,
+            hasCompletedOnboarding: state.hasCompletedOnboarding,
+            xp: state.xp,
+            activeWeeks: state.activeWeeks,
+            lastActiveDate: state.lastActiveDate,
+            completedMissions: state.completedMissions,
+            sessions: state.sessions,
+            achievements: state.achievements,
+          });
+          set({ lastSyncedAt: new Date().toISOString() });
+        } catch (err) {
+          console.warn('[Clyra] syncToCloud failed:', err);
+        }
+      },
+
+      syncFromCloud: async () => {
+        try {
+          const cloudData = await pullCloudToLocal();
+          if (!cloudData) return;
+          set({
+            userName: cloudData.userName,
+            age: cloudData.age,
+            sex: cloudData.sex,
+            language: cloudData.language,
+            healthGoals: cloudData.healthGoals as HealthGoal[],
+            testReminderDays: cloudData.testReminderDays,
+            hasCompletedOnboarding: cloudData.hasCompletedOnboarding,
+            xp: cloudData.xp,
+            activeWeeks: cloudData.activeWeeks,
+            lastActiveDate: cloudData.lastActiveDate,
+            completedMissions: cloudData.completedMissions,
+            sessions: cloudData.sessions,
+            achievements: cloudData.achievements,
+            isPro: cloudData.isPro,
+            subscriptionPlan: cloudData.subscriptionPlan,
+            subscriptionExpiresAt: cloudData.subscriptionExpiresAt,
+            biomarkers: cloudData.sessions.length > 0
+              ? (() => {
+                  const merged: Biomarker[] = [];
+                  for (let i = cloudData.sessions.length - 1; i >= 0; i--) {
+                    for (const bm of cloudData.sessions[i].biomarkers) {
+                      const idx = merged.findIndex(b => b.name.toLowerCase() === bm.name.toLowerCase());
+                      if (idx >= 0) merged[idx] = bm;
+                      else merged.push(bm);
+                    }
+                  }
+                  return merged;
+                })()
+              : [],
+            healthScore: cloudData.sessions.length > 0
+              ? computeHealthScore(
+                  (() => {
+                    const merged: Biomarker[] = [];
+                    for (let i = cloudData.sessions.length - 1; i >= 0; i--) {
+                      for (const bm of cloudData.sessions[i].biomarkers) {
+                        const idx = merged.findIndex(b => b.name.toLowerCase() === bm.name.toLowerCase());
+                        if (idx >= 0) merged[idx] = bm;
+                        else merged.push(bm);
+                      }
+                    }
+                    return merged;
+                  })()
+                )
+              : 0,
+            lastSyncedAt: new Date().toISOString(),
+          });
+        } catch (err) {
+          console.warn('[Clyra] syncFromCloud failed:', err);
+        }
+      },
+
       clearAllData: () => set({
+        authUserId: null,
+        isGuest: true,
         biomarkers: [],
         healthScore: 0,
         sessions: [],
@@ -269,6 +378,7 @@ export const useStore = create<UserState>()(
         testReminderDays: 90,
         lastActiveDate: null,
         activeWeeks: 0,
+        lastSyncedAt: null,
       }),
     }),
     {

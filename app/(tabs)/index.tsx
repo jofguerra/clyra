@@ -26,6 +26,7 @@ import {
 import { getBiomarkerKnowledge } from '../../constants/biomarkerKnowledge';
 import { Biomarker } from '../../services/openai';
 import { shareHealthReport } from '../../services/pdfExport';
+import { translateBiomarkerValue } from '../../constants/valueTranslations';
 
 // ─── Score helpers ────────────────────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ function MarkerRow({ biomarker, language, t, onPress }: {
         <Text style={styles.markerOriginal}>{biomarker.name}</Text>
       </View>
       <View style={styles.markerRight}>
-        <Text style={[styles.markerValue, { color }]}>{biomarker.value} {biomarker.unit}</Text>
+        <Text style={[styles.markerValue, { color }]}>{translateBiomarkerValue(biomarker.value, language)} {biomarker.unit}</Text>
         <View style={[styles.markerChip, { backgroundColor: bg }]}>
           <Text style={[styles.markerChipText, { color }]}>{statusLabel[biomarker.status] ?? biomarker.status}</Text>
         </View>

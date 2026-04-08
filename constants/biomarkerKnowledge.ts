@@ -2364,6 +2364,690 @@ const K: Record<string, BiomarkerKnowledge> = {
     sampleType: 'urine',
     reviewEveryMonths: 12,
   },
+
+  // ── Hematology (CBC differential) ─────────────────────────────────────────
+
+  'basófilos': {
+    simpleName: { en: 'Basophils', es: 'Basófilos' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'A rare type of white blood cell involved in allergic reactions and inflammation',
+      es: 'Tipo raro de glóbulo blanco involucrado en reacciones alérgicas e inflamación',
+    },
+    messages: {
+      normal: { en: 'Your basophils are in a healthy range. Allergy and inflammation markers look good.', es: 'Tus basófilos están en rango normal. Marcadores de alergia e inflamación bien.' },
+      borderline: { en: 'Your basophils are slightly off. Could reflect a mild allergic response.', es: 'Tus basófilos están algo fuera del rango. Puede reflejar una respuesta alérgica leve.' },
+      high: { en: 'Your basophils are elevated — can be related to allergies, inflammation, or rare blood conditions. See your doctor.', es: 'Tus basófilos están altos — puede relacionarse con alergias, inflamación o condiciones raras. Consulta a tu médico.' },
+      low: { en: 'Your basophils are low — this is usually not clinically significant.', es: 'Tus basófilos están bajos — generalmente sin significado clínico.' },
+    },
+    whyItMatters: {
+      en: 'Basophils play a role in allergic reactions by releasing histamine. Elevated counts can indicate allergies, chronic inflammation, or rarely, myeloproliferative disorders.',
+      es: 'Los basófilos participan en reacciones alérgicas liberando histamina. Valores elevados pueden indicar alergias, inflamación crónica o, raramente, trastornos mieloproliferativos.',
+    },
+    optimalRange: { general: { min: 0, max: 1 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'eosinófilos': {
+    simpleName: { en: 'Eosinophils', es: 'Eosinófilos' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'White blood cells that fight parasites and play a role in allergic reactions',
+      es: 'Glóbulos blancos que combaten parásitos y participan en reacciones alérgicas',
+    },
+    messages: {
+      normal: { en: 'Your eosinophils are in a healthy range. No signs of allergies or parasitic infection.', es: 'Tus eosinófilos están en rango normal. Sin signos de alergias o infección parasitaria.' },
+      borderline: { en: 'Your eosinophils are slightly elevated. Could be from allergies or mild inflammation.', es: 'Tus eosinófilos están algo elevados. Puede ser por alergias o inflamación leve.' },
+      high: { en: 'Your eosinophils are elevated — often seen with allergies, asthma, or parasitic infections. See your doctor.', es: 'Tus eosinófilos están altos — frecuente en alergias, asma o infecciones parasitarias. Consulta a tu médico.' },
+      low: { en: 'Your eosinophils are low — usually not a concern on its own.', es: 'Tus eosinófilos están bajos — usualmente no es preocupante por sí solo.' },
+    },
+    whyItMatters: {
+      en: 'Eosinophils help fight parasites and are heavily involved in allergic inflammation. High counts can indicate allergies, asthma, eczema, or parasitic infections.',
+      es: 'Los eosinófilos ayudan a combatir parásitos y participan en la inflamación alérgica. Valores altos pueden indicar alergias, asma, eczema o infecciones parasitarias.',
+    },
+    optimalRange: { general: { min: 1, max: 4 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'monocitos': {
+    simpleName: { en: 'Monocytes', es: 'Monocitos' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Large white blood cells that clean up dead cells and fight chronic infections',
+      es: 'Glóbulos blancos grandes que limpian células muertas y combaten infecciones crónicas',
+    },
+    messages: {
+      normal: { en: 'Your monocytes are in a healthy range. Tissue repair and cleanup are on track.', es: 'Tus monocitos están en rango normal. Reparación de tejidos y limpieza celular funcionan bien.' },
+      borderline: { en: 'Your monocytes are slightly off. Could reflect a healing process or mild inflammation.', es: 'Tus monocitos están algo fuera del rango. Puede reflejar un proceso de curación o inflamación leve.' },
+      high: { en: 'Your monocytes are elevated — often seen during recovery from infections or chronic inflammatory conditions.', es: 'Tus monocitos están altos — frecuente durante recuperación de infecciones o condiciones inflamatorias crónicas.' },
+      low: { en: 'Your monocytes are low — this can happen with bone marrow issues. Mention it to your doctor.', es: 'Tus monocitos están bajos — puede ocurrir con problemas de médula ósea. Menciónalo a tu médico.' },
+    },
+    whyItMatters: {
+      en: 'Monocytes are the cleanup crew of the immune system. They eat dead cells, bacteria, and debris. Elevated counts can indicate chronic infections, autoimmune diseases, or recovery from acute illness.',
+      es: 'Los monocitos son el equipo de limpieza del sistema inmune. Se comen células muertas, bacterias y desechos. Valores elevados pueden indicar infecciones crónicas o enfermedades autoinmunes.',
+    },
+    optimalRange: { general: { min: 2, max: 8 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'segmentados': {
+    simpleName: { en: 'Segmented Neutrophils', es: 'Segmentados' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Mature neutrophils — the main soldiers of your immune system against bacteria',
+      es: 'Neutrófilos maduros — los principales soldados del sistema inmune contra bacterias',
+    },
+    messages: {
+      normal: { en: 'Your segmented neutrophils are in a healthy range. Immune defense is strong.', es: 'Tus segmentados están en rango normal. Tu defensa inmune es fuerte.' },
+      borderline: { en: 'Your segmented neutrophils are slightly off. Could be a temporary response.', es: 'Tus segmentados están algo fuera del rango. Puede ser una respuesta temporal.' },
+      high: { en: 'Your segmented neutrophils are elevated — often indicates an active bacterial infection or inflammation.', es: 'Tus segmentados están altos — frecuente en infección bacteriana activa o inflamación.' },
+      low: { en: 'Your segmented neutrophils are low. You may be more susceptible to infections. See your doctor.', es: 'Tus segmentados están bajos. Puedes ser más susceptible a infecciones. Consulta a tu médico.' },
+    },
+    whyItMatters: {
+      en: 'Segmented neutrophils are mature immune cells and the most abundant white blood cells. They are the first responders to bacterial infections.',
+      es: 'Los segmentados son neutrófilos maduros y los glóbulos blancos más abundantes. Son los primeros en responder a infecciones bacterianas.',
+    },
+    optimalRange: { general: { min: 40, max: 70 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'bandas': {
+    simpleName: { en: 'Band Neutrophils', es: 'Bandas' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Immature neutrophils — their presence means your body is urgently making more immune cells',
+      es: 'Neutrófilos inmaduros — su presencia indica que el cuerpo está produciendo más células inmunes urgentemente',
+    },
+    messages: {
+      normal: { en: 'Your band count is normal. No signs of acute infection.', es: 'Tus bandas están en rango normal. Sin signos de infección aguda.' },
+      borderline: { en: 'Slightly elevated bands — your body may be ramping up immune defense.', es: 'Bandas ligeramente elevadas — tu cuerpo puede estar activando defensas.' },
+      high: { en: 'Elevated bands (left shift) — this strongly suggests an active acute infection. See your doctor.', es: 'Bandas elevadas (desviación a la izquierda) — sugiere infección aguda activa. Consulta a tu médico.' },
+      low: { en: 'Low or absent bands is normal — no clinical concern.', es: 'Bandas bajas o ausentes es normal — sin significado clínico.' },
+    },
+    whyItMatters: {
+      en: 'Band cells are immature neutrophils released early by the bone marrow during acute infection. A high band count ("left shift") is a classic sign of serious bacterial infection.',
+      es: 'Las bandas son neutrófilos inmaduros liberados tempranamente por la médula ósea durante infección aguda. Un conteo alto es signo clásico de infección bacteriana seria.',
+    },
+    optimalRange: { general: { min: 0, max: 5 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'rdw': {
+    simpleName: { en: 'Red Cell Variation', es: 'Variación de Glóbulos Rojos' },
+    emoji: '📊',
+    whatItMeasures: {
+      en: 'How much your red blood cells vary in size — helps identify the type of anemia',
+      es: 'Cuánto varían en tamaño tus glóbulos rojos — ayuda a identificar el tipo de anemia',
+    },
+    messages: {
+      normal: { en: 'Your red cell size variation is normal. Red blood cells are uniform.', es: 'La variación de tamaño de tus glóbulos rojos es normal. Son uniformes.' },
+      borderline: { en: 'Your RDW is slightly elevated. Some size variation in red cells — check iron and B12.', es: 'Tu RDW está algo elevado. Hay algo de variación en tamaño — revisa hierro y B12.' },
+      high: { en: 'Your RDW is elevated — mixed-size red cells often indicate iron deficiency or nutritional anemia. See your doctor.', es: 'Tu RDW está elevado — glóbulos rojos de tamaño variable pueden indicar deficiencia de hierro o anemia nutricional.' },
+      low: { en: 'Your RDW is low — all red cells are very uniform in size. Usually not a concern.', es: 'Tu RDW está bajo — todos tus glóbulos rojos son muy uniformes. Usualmente no es preocupante.' },
+    },
+    whyItMatters: {
+      en: 'RDW measures size variation among your red blood cells. High RDW combined with other CBC values helps identify the specific type and cause of anemia.',
+      es: 'El RDW mide la variación de tamaño entre tus glóbulos rojos. Un RDW alto junto con otros valores del hemograma ayuda a identificar el tipo y causa de anemia.',
+    },
+    optimalRange: { general: { min: 11.5, max: 14.5 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'chcm': {
+    simpleName: { en: 'Hemoglobin Concentration', es: 'Concentración de Hemoglobina' },
+    emoji: '📏',
+    whatItMeasures: {
+      en: 'Mean Corpuscular Hemoglobin Concentration — how concentrated hemoglobin is in your red cells',
+      es: 'Concentración de Hemoglobina Corpuscular Media — qué tan concentrada está la hemoglobina en tus glóbulos rojos',
+    },
+    messages: {
+      normal: { en: 'Your MCHC is normal. Hemoglobin is well-distributed in your red cells.', es: 'Tu CHCM es normal. La hemoglobina está bien distribuida en tus glóbulos rojos.' },
+      borderline: { en: 'Your MCHC is slightly off. Check alongside MCV and iron levels.', es: 'Tu CHCM está algo fuera del rango. Revísalo junto con VCM y hierro.' },
+      high: { en: 'Your MCHC is elevated — can indicate hereditary spherocytosis or dehydration.', es: 'Tu CHCM está elevada — puede indicar esferocitosis hereditaria o deshidratación.' },
+      low: { en: 'Your MCHC is low — red cells are paler than normal (hypochromic). Often linked to iron deficiency.', es: 'Tu CHCM está baja — tus glóbulos rojos son más pálidos de lo normal. Frecuente en deficiencia de hierro.' },
+    },
+    whyItMatters: {
+      en: 'MCHC tells you how densely packed hemoglobin is inside red blood cells. Low values (hypochromia) strongly suggest iron deficiency.',
+      es: 'La CHCM indica qué tan densamente empaquetada está la hemoglobina dentro de los glóbulos rojos. Valores bajos sugieren fuertemente deficiencia de hierro.',
+    },
+    optimalRange: { general: { min: 32, max: 36 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Kidney / Renal (additional) ───────────────────────────────────────────
+
+  'nitrógeno de urea': {
+    simpleName: { en: 'Blood Urea Nitrogen', es: 'Nitrógeno de Urea' },
+    emoji: '🫘',
+    whatItMeasures: {
+      en: 'A waste product from protein breakdown that your kidneys filter out',
+      es: 'Producto de desecho del metabolismo de proteínas que los riñones filtran',
+    },
+    messages: {
+      normal: { en: 'Your BUN is in a healthy range. Kidneys are filtering protein waste well.', es: 'Tu nitrógeno de urea está en buen rango. Tus riñones filtran bien los desechos proteicos.' },
+      borderline: { en: 'Your BUN is slightly elevated. Stay well-hydrated and monitor.', es: 'Tu nitrógeno de urea está algo elevado. Mantente hidratado y monitorea.' },
+      high: { en: 'Your BUN is high — can indicate kidney stress, dehydration, or high protein intake. See your doctor.', es: 'Tu nitrógeno de urea está alto — puede indicar estrés renal, deshidratación o alto consumo de proteínas. Consulta a tu médico.' },
+      low: { en: 'Your BUN is low — could indicate low protein diet or liver issues. Usually not a concern.', es: 'Tu nitrógeno de urea está bajo — puede indicar dieta baja en proteínas o problemas hepáticos.' },
+    },
+    whyItMatters: {
+      en: 'BUN measures how well your kidneys remove urea (a protein waste product). Together with creatinine, it provides a clear picture of kidney function.',
+      es: 'El BUN mide qué tan bien tus riñones eliminan la urea (desecho proteico). Junto con la creatinina, da una imagen clara de la función renal.',
+    },
+    optimalRange: { general: { min: 7, max: 20 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'urea': {
+    simpleName: { en: 'Urea', es: 'Urea' },
+    emoji: '🫘',
+    whatItMeasures: {
+      en: 'A waste product from protein metabolism filtered by your kidneys',
+      es: 'Producto de desecho del metabolismo de proteínas filtrado por los riñones',
+    },
+    messages: {
+      normal: { en: 'Your urea is in a healthy range. Kidney filtration is working well.', es: 'Tu urea está en buen rango. La filtración renal funciona bien.' },
+      borderline: { en: 'Your urea is slightly elevated. Stay hydrated and monitor kidney function.', es: 'Tu urea está algo elevada. Mantente hidratado y monitorea la función renal.' },
+      high: { en: 'Your urea is elevated — can indicate kidney dysfunction or dehydration. See your doctor.', es: 'Tu urea está elevada — puede indicar disfunción renal o deshidratación. Consulta a tu médico.' },
+      low: { en: 'Your urea is low — may reflect low protein intake or liver issues.', es: 'Tu urea está baja — puede reflejar bajo consumo de proteínas o problemas hepáticos.' },
+    },
+    whyItMatters: {
+      en: 'Urea is the main waste product from protein breakdown. Your kidneys filter it from the blood. Elevated levels suggest the kidneys may be struggling.',
+      es: 'La urea es el principal producto de desecho del metabolismo de proteínas. Los riñones la filtran de la sangre. Valores elevados sugieren que los riñones pueden estar comprometidos.',
+    },
+    optimalRange: { general: { min: 15, max: 40 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Liver (additional) ────────────────────────────────────────────────────
+
+  'proteínas totales': {
+    simpleName: { en: 'Total Protein', es: 'Proteínas Totales' },
+    emoji: '🧬',
+    whatItMeasures: {
+      en: 'Total protein in your blood — includes albumin and globulins',
+      es: 'Proteína total en la sangre — incluye albúmina y globulinas',
+    },
+    messages: {
+      normal: { en: 'Your total protein is in a healthy range. Liver production and nutrition look good.', es: 'Tus proteínas totales están en buen rango. Producción hepática y nutrición bien.' },
+      borderline: { en: 'Your total protein is slightly off. Check albumin and globulin individually.', es: 'Tus proteínas totales están algo fuera del rango. Revisa albúmina y globulina por separado.' },
+      high: { en: 'Your total protein is elevated — can indicate chronic inflammation, infection, or dehydration.', es: 'Tus proteínas totales están elevadas — puede indicar inflamación crónica, infección o deshidratación.' },
+      low: { en: 'Your total protein is low — may indicate liver disease, malnutrition, or kidney protein loss.', es: 'Tus proteínas totales están bajas — puede indicar enfermedad hepática, malnutrición o pérdida renal de proteínas.' },
+    },
+    whyItMatters: {
+      en: 'Total protein reflects your liver\'s ability to produce proteins and your overall nutritional status. Low levels can signal liver disease or malnutrition.',
+      es: 'Las proteínas totales reflejan la capacidad del hígado para producir proteínas y tu estado nutricional general. Niveles bajos pueden indicar enfermedad hepática o malnutrición.',
+    },
+    optimalRange: { general: { min: 6.0, max: 8.3 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'globulina': {
+    simpleName: { en: 'Globulin', es: 'Globulina' },
+    emoji: '🧬',
+    whatItMeasures: {
+      en: 'A group of proteins involved in immune function and blood clotting',
+      es: 'Grupo de proteínas involucradas en función inmune y coagulación',
+    },
+    messages: {
+      normal: { en: 'Your globulin is in a healthy range. Immune proteins are well-balanced.', es: 'Tu globulina está en buen rango. Las proteínas inmunes están equilibradas.' },
+      borderline: { en: 'Your globulin is slightly off. Worth checking in context with other liver markers.', es: 'Tu globulina está algo fuera del rango. Conviene revisarla junto con otros marcadores hepáticos.' },
+      high: { en: 'Your globulin is elevated — can indicate chronic infection, inflammation, or liver disease.', es: 'Tu globulina está elevada — puede indicar infección crónica, inflamación o enfermedad hepática.' },
+      low: { en: 'Your globulin is low — may indicate immune deficiency or kidney protein loss.', es: 'Tu globulina está baja — puede indicar deficiencia inmune o pérdida renal de proteínas.' },
+    },
+    whyItMatters: {
+      en: 'Globulins include antibodies and clotting proteins. Abnormal levels can indicate immune system problems, chronic infections, or liver disease.',
+      es: 'Las globulinas incluyen anticuerpos y proteínas de coagulación. Niveles anormales pueden indicar problemas inmunes, infecciones crónicas o enfermedad hepática.',
+    },
+    optimalRange: { general: { min: 2.0, max: 3.5 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'relación a/g': {
+    simpleName: { en: 'A/G Ratio', es: 'Relación A/G' },
+    emoji: '⚖️',
+    whatItMeasures: {
+      en: 'The ratio of albumin to globulin — reflects liver and immune balance',
+      es: 'La proporción entre albúmina y globulina — refleja equilibrio hepático e inmune',
+    },
+    messages: {
+      normal: { en: 'Your A/G ratio is balanced. Liver and immune protein production are in harmony.', es: 'Tu relación A/G está equilibrada. Producción de proteínas hepáticas e inmunes en armonía.' },
+      borderline: { en: 'Your A/G ratio is slightly off. Check albumin and globulin individually.', es: 'Tu relación A/G está algo fuera del rango. Revisa albúmina y globulina por separado.' },
+      high: { en: 'Your A/G ratio is elevated — usually means low globulins. Check immune function.', es: 'Tu relación A/G está elevada — usualmente indica globulinas bajas. Revisa función inmune.' },
+      low: { en: 'Your A/G ratio is low — can indicate chronic inflammation, liver disease, or elevated immune response.', es: 'Tu relación A/G está baja — puede indicar inflamación crónica, enfermedad hepática o respuesta inmune elevada.' },
+    },
+    whyItMatters: {
+      en: 'The A/G ratio helps distinguish between liver problems (low albumin) and immune/inflammatory conditions (high globulin). A low ratio warrants further investigation.',
+      es: 'La relación A/G ayuda a distinguir entre problemas hepáticos (albúmina baja) y condiciones inmunes/inflamatorias (globulina alta).',
+    },
+    optimalRange: { general: { min: 1.1, max: 2.5 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'fosfatasa alcalina': {
+    simpleName: { en: 'Alkaline Phosphatase', es: 'Fosfatasa Alcalina' },
+    emoji: '🦴',
+    whatItMeasures: {
+      en: 'An enzyme found in liver, bones, and bile ducts — rises with bone or liver stress',
+      es: 'Enzima presente en hígado, huesos y vías biliares — sube con estrés óseo o hepático',
+    },
+    messages: {
+      normal: { en: 'Your ALP is in a healthy range. Liver and bone function look good.', es: 'Tu fosfatasa alcalina está en buen rango. Función hepática y ósea bien.' },
+      borderline: { en: 'Your ALP is slightly elevated. Could be normal with bone growth or mild liver stress.', es: 'Tu fosfatasa alcalina está algo elevada. Puede ser normal en crecimiento óseo o estrés hepático leve.' },
+      high: { en: 'Your ALP is elevated — can indicate bile duct obstruction, bone disease, or liver issues. See your doctor.', es: 'Tu fosfatasa alcalina está elevada — puede indicar obstrucción biliar, enfermedad ósea o problemas hepáticos. Consulta a tu médico.' },
+      low: { en: 'Your ALP is low — rarely clinically significant. Could relate to zinc or magnesium deficiency.', es: 'Tu fosfatasa alcalina está baja — raramente clínicamente significativa. Puede relacionarse con deficiencia de zinc o magnesio.' },
+    },
+    whyItMatters: {
+      en: 'ALP is an enzyme present in liver, bones, and bile ducts. Elevated levels can indicate bile duct blockage, bone disorders (like Paget\'s), or liver disease.',
+      es: 'La fosfatasa alcalina es una enzima presente en hígado, huesos y vías biliares. Valores elevados pueden indicar obstrucción biliar, trastornos óseos o enfermedad hepática.',
+    },
+    optimalRange: { general: { min: 44, max: 147 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Metabolic (additional) ────────────────────────────────────────────────
+
+  'ldh': {
+    simpleName: { en: 'Lactate Dehydrogenase', es: 'Lactato Deshidrogenasa' },
+    emoji: '⚡',
+    whatItMeasures: {
+      en: 'An enzyme released when cells are damaged — found in almost all tissues',
+      es: 'Enzima liberada cuando hay daño celular — presente en casi todos los tejidos',
+    },
+    messages: {
+      normal: { en: 'Your LDH is in a healthy range. No signs of tissue damage.', es: 'Tu LDH está en buen rango. Sin signos de daño tisular.' },
+      borderline: { en: 'Your LDH is slightly elevated. Could be from exercise or mild tissue stress.', es: 'Tu LDH está algo elevada. Puede ser por ejercicio o estrés tisular leve.' },
+      high: { en: 'Your LDH is elevated — indicates cell damage somewhere in the body. See your doctor for further evaluation.', es: 'Tu LDH está elevada — indica daño celular en algún lugar del cuerpo. Consulta a tu médico.' },
+      low: { en: 'Your LDH is low — generally not clinically significant.', es: 'Tu LDH está baja — generalmente sin significado clínico.' },
+    },
+    whyItMatters: {
+      en: 'LDH is found in almost every tissue. It rises with cell damage from any cause — heart, liver, muscle, blood, or even exercise. It\'s a general marker, not specific to one organ.',
+      es: 'La LDH se encuentra en casi todos los tejidos. Sube con daño celular de cualquier causa — corazón, hígado, músculo, sangre o incluso ejercicio.',
+    },
+    optimalRange: { general: { min: 120, max: 246 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'cpk': {
+    simpleName: { en: 'Muscle Enzyme', es: 'Enzima Muscular' },
+    emoji: '💪',
+    whatItMeasures: {
+      en: 'An enzyme released from damaged muscles, heart, or brain tissue',
+      es: 'Enzima liberada por músculos, corazón o tejido cerebral dañados',
+    },
+    messages: {
+      normal: { en: 'Your CPK is in a healthy range. No signs of muscle damage.', es: 'Tu CPK está en buen rango. Sin signos de daño muscular.' },
+      borderline: { en: 'Your CPK is slightly elevated. Often from intense exercise — monitor if persistent.', es: 'Tu CPK está algo elevada. Frecuente por ejercicio intenso — monitorea si persiste.' },
+      high: { en: 'Your CPK is elevated — can indicate muscle damage, heart injury, or medication side effects (statins). See your doctor.', es: 'Tu CPK está elevada — puede indicar daño muscular, lesión cardíaca o efectos de medicamentos (estatinas). Consulta a tu médico.' },
+      low: { en: 'Your CPK is low — generally not a concern.', es: 'Tu CPK está baja — generalmente no es preocupante.' },
+    },
+    whyItMatters: {
+      en: 'CPK (Creatine Phosphokinase) rises when muscle cells are damaged. High levels can indicate rhabdomyolysis, heart attack, or statin-induced muscle damage.',
+      es: 'La CPK sube cuando se dañan células musculares. Niveles altos pueden indicar rabdomiólisis, infarto o daño muscular por estatinas.',
+    },
+    optimalRange: {
+      male: { min: 39, max: 308 },
+      female: { min: 26, max: 192 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Iron metabolism ───────────────────────────────────────────────────────
+
+  'hierro': {
+    simpleName: { en: 'Iron', es: 'Hierro' },
+    emoji: '🔩',
+    whatItMeasures: {
+      en: 'The amount of iron circulating in your blood, needed for oxygen transport',
+      es: 'Cantidad de hierro circulando en la sangre, necesario para transportar oxígeno',
+    },
+    messages: {
+      normal: { en: 'Your iron is in a healthy range. Oxygen transport and energy production are well-supported.', es: 'Tu hierro está en buen rango. Transporte de oxígeno y producción de energía bien respaldados.' },
+      borderline: { en: 'Your iron is slightly off. Check ferritin for a complete picture of iron stores.', es: 'Tu hierro está algo fuera del rango. Revisa ferritina para una imagen completa de reservas de hierro.' },
+      high: { en: 'Your iron is elevated — can indicate hemochromatosis or iron overload. See your doctor.', es: 'Tu hierro está elevado — puede indicar hemocromatosis o sobrecarga de hierro. Consulta a tu médico.' },
+      low: { en: 'Your iron is low — this can cause fatigue, weakness, and anemia. Consider dietary changes or supplementation.', es: 'Tu hierro está bajo — puede causar fatiga, debilidad y anemia. Considera cambios dietéticos o suplementación.' },
+    },
+    whyItMatters: {
+      en: 'Iron is essential for making hemoglobin, which carries oxygen in your blood. Deficiency is the world\'s most common nutritional disorder.',
+      es: 'El hierro es esencial para producir hemoglobina, que transporta oxígeno en la sangre. La deficiencia es el trastorno nutricional más común del mundo.',
+    },
+    foodsToEat: {
+      en: 'red meat, spinach, lentils, beans, fortified cereals, tofu (with vitamin C for better absorption)',
+      es: 'carne roja, espinaca, lentejas, frijoles, cereales fortificados, tofu (con vitamina C para mejor absorción)',
+    },
+    foodsToAvoid: {
+      en: 'coffee and tea with meals, excess dairy at same time as iron-rich foods',
+      es: 'café y té con las comidas, exceso de lácteos al mismo tiempo que alimentos ricos en hierro',
+    },
+    optimalRange: {
+      male: { min: 65, max: 176 },
+      female: { min: 50, max: 170 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'hierro sérico': {
+    simpleName: { en: 'Serum Iron', es: 'Hierro Sérico' },
+    emoji: '🔩',
+    whatItMeasures: {
+      en: 'The amount of iron bound to transferrin in your blood serum',
+      es: 'Cantidad de hierro unido a transferrina en el suero sanguíneo',
+    },
+    messages: {
+      normal: { en: 'Your serum iron is in a healthy range.', es: 'Tu hierro sérico está en buen rango.' },
+      borderline: { en: 'Your serum iron is slightly off. Check ferritin and transferrin for context.', es: 'Tu hierro sérico está algo fuera del rango. Revisa ferritina y transferrina.' },
+      high: { en: 'Your serum iron is elevated — may indicate iron overload. See your doctor.', es: 'Tu hierro sérico está elevado — puede indicar sobrecarga de hierro. Consulta a tu médico.' },
+      low: { en: 'Your serum iron is low — a sign of iron deficiency. Check ferritin.', es: 'Tu hierro sérico está bajo — signo de deficiencia de hierro. Revisa ferritina.' },
+    },
+    whyItMatters: {
+      en: 'Serum iron reflects the amount of iron available for immediate use. Together with ferritin and transferrin, it gives a complete picture of your iron status.',
+      es: 'El hierro sérico refleja la cantidad de hierro disponible para uso inmediato. Junto con ferritina y transferrina, da una imagen completa del estado de hierro.',
+    },
+    optimalRange: {
+      male: { min: 65, max: 176 },
+      female: { min: 50, max: 170 },
+    },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'transferrina': {
+    simpleName: { en: 'Iron Transport', es: 'Transferrina' },
+    emoji: '🚚',
+    whatItMeasures: {
+      en: 'The protein that carries iron through your bloodstream',
+      es: 'Proteína que transporta hierro por el torrente sanguíneo',
+    },
+    messages: {
+      normal: { en: 'Your transferrin is in a healthy range. Iron transport is working well.', es: 'Tu transferrina está en buen rango. El transporte de hierro funciona bien.' },
+      borderline: { en: 'Your transferrin is slightly off. Check iron and ferritin for a complete picture.', es: 'Tu transferrina está algo fuera del rango. Revisa hierro y ferritina.' },
+      high: { en: 'Your transferrin is elevated — often means your body needs more iron (iron deficiency).', es: 'Tu transferrina está elevada — frecuentemente indica que tu cuerpo necesita más hierro (deficiencia).' },
+      low: { en: 'Your transferrin is low — can indicate chronic inflammation, liver disease, or iron overload.', es: 'Tu transferrina está baja — puede indicar inflamación crónica, enfermedad hepática o sobrecarga de hierro.' },
+    },
+    whyItMatters: {
+      en: 'Transferrin is the taxi that moves iron through your blood. High transferrin with low iron = iron deficiency. Low transferrin can indicate chronic disease or liver problems.',
+      es: 'La transferrina es el taxi que mueve hierro por la sangre. Transferrina alta con hierro bajo = deficiencia de hierro. Transferrina baja puede indicar enfermedad crónica.',
+    },
+    optimalRange: { general: { min: 200, max: 360 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'saturación de transferrina': {
+    simpleName: { en: 'Iron Saturation', es: 'Saturación de Transferrina' },
+    emoji: '📊',
+    whatItMeasures: {
+      en: 'The percentage of transferrin that is carrying iron — indicates iron availability',
+      es: 'Porcentaje de transferrina que está transportando hierro — indica disponibilidad de hierro',
+    },
+    messages: {
+      normal: { en: 'Your iron saturation is in a healthy range. Iron supply and demand are balanced.', es: 'Tu saturación de transferrina está en buen rango. Oferta y demanda de hierro están equilibradas.' },
+      borderline: { en: 'Your iron saturation is slightly off. Monitor alongside ferritin.', es: 'Tu saturación de transferrina está algo fuera del rango. Monitorea junto con ferritina.' },
+      high: { en: 'Your iron saturation is elevated — can indicate iron overload (hemochromatosis). See your doctor.', es: 'Tu saturación de transferrina está elevada — puede indicar sobrecarga de hierro (hemocromatosis). Consulta a tu médico.' },
+      low: { en: 'Your iron saturation is low — confirms iron deficiency. Consider supplementation.', es: 'Tu saturación de transferrina está baja — confirma deficiencia de hierro. Considera suplementación.' },
+    },
+    whyItMatters: {
+      en: 'Iron saturation tells you what fraction of the iron-carrying protein is actually loaded with iron. Low saturation confirms iron deficiency; high saturation can indicate dangerous iron overload.',
+      es: 'La saturación de transferrina indica qué fracción de la proteína transportadora de hierro está cargada con hierro. Baja saturación confirma deficiencia; alta puede indicar sobrecarga peligrosa.',
+    },
+    optimalRange: { general: { min: 20, max: 50 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Thyroid (additional) ──────────────────────────────────────────────────
+
+  't3 libre': {
+    simpleName: { en: 'Free T3', es: 'T3 Libre' },
+    emoji: '🦋',
+    whatItMeasures: {
+      en: 'The active form of thyroid hormone that directly regulates metabolism',
+      es: 'La forma activa de hormona tiroidea que regula directamente el metabolismo',
+    },
+    messages: {
+      normal: { en: 'Your Free T3 is in a healthy range. Thyroid hormone is working well.', es: 'Tu T3 Libre está en buen rango. La hormona tiroidea funciona bien.' },
+      borderline: { en: 'Your Free T3 is slightly off. Check TSH and T4 for the full thyroid picture.', es: 'Tu T3 Libre está algo fuera del rango. Revisa TSH y T4 para la imagen completa.' },
+      high: { en: 'Your Free T3 is elevated — may indicate hyperthyroidism. You may feel anxious or have a fast heart rate.', es: 'Tu T3 Libre está elevada — puede indicar hipertiroidismo. Puedes sentir ansiedad o taquicardia.' },
+      low: { en: 'Your Free T3 is low — may indicate hypothyroidism or conversion problems. See your doctor.', es: 'Tu T3 Libre está baja — puede indicar hipotiroidismo o problemas de conversión. Consulta a tu médico.' },
+    },
+    whyItMatters: {
+      en: 'Free T3 is the most active thyroid hormone. Your body converts T4 into T3. Low T3 even with normal TSH can explain fatigue and weight gain.',
+      es: 'La T3 Libre es la hormona tiroidea más activa. El cuerpo convierte T4 en T3. T3 baja incluso con TSH normal puede explicar fatiga y aumento de peso.',
+    },
+    optimalRange: { general: { min: 2.3, max: 4.2 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  't4 libre': {
+    simpleName: { en: 'Free T4', es: 'T4 Libre' },
+    emoji: '🦋',
+    whatItMeasures: {
+      en: 'The main thyroid hormone circulating in your blood, ready to be converted to active T3',
+      es: 'La principal hormona tiroidea circulante, lista para convertirse en T3 activa',
+    },
+    messages: {
+      normal: { en: 'Your Free T4 is in a healthy range. Thyroid production is on track.', es: 'Tu T4 Libre está en buen rango. La producción tiroidea está bien.' },
+      borderline: { en: 'Your Free T4 is slightly off. Evaluate alongside TSH for a complete picture.', es: 'Tu T4 Libre está algo fuera del rango. Evalúa junto con TSH para una imagen completa.' },
+      high: { en: 'Your Free T4 is elevated — suggests hyperthyroidism. See your doctor.', es: 'Tu T4 Libre está elevada — sugiere hipertiroidismo. Consulta a tu médico.' },
+      low: { en: 'Your Free T4 is low — suggests hypothyroidism. Your doctor may recommend thyroid medication.', es: 'Tu T4 Libre está baja — sugiere hipotiroidismo. Tu médico puede recomendar medicación tiroidea.' },
+    },
+    whyItMatters: {
+      en: 'Free T4 is the thyroid\'s main output. Together with TSH, it\'s the standard way to diagnose thyroid disorders. Low T4 with high TSH = hypothyroidism. High T4 with low TSH = hyperthyroidism.',
+      es: 'La T4 Libre es el principal producto de la tiroides. Junto con TSH, es la forma estándar de diagnosticar trastornos tiroideos.',
+    },
+    optimalRange: { general: { min: 0.8, max: 1.8 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  // ── Urine (physical/microscopic) ──────────────────────────────────────────
+
+  'color (orina)': {
+    simpleName: { en: 'Urine Color', es: 'Color de Orina' },
+    emoji: '🎨',
+    whatItMeasures: {
+      en: 'The color of your urine — indicates hydration and potential health issues',
+      es: 'El color de la orina — indica hidratación y posibles problemas de salud',
+    },
+    messages: {
+      normal: { en: 'Your urine color is normal (pale to dark yellow). Hydration looks good.', es: 'El color de tu orina es normal (amarillo pálido a oscuro). Hidratación adecuada.' },
+      borderline: { en: 'Your urine color is slightly unusual. Monitor hydration and diet.', es: 'El color de tu orina está algo inusual. Vigila tu hidratación y dieta.' },
+      high: { en: 'Your urine has an unusual color — dark amber, red, or brown can indicate dehydration, blood, or liver issues.', es: 'Tu orina tiene un color inusual — ámbar oscuro, rojo o marrón puede indicar deshidratación, sangre o problemas hepáticos.' },
+      low: { en: 'Very pale or colorless urine usually indicates overhydration — not typically a concern.', es: 'Orina muy pálida o incolora usualmente indica sobrehidratación — no es preocupante.' },
+    },
+    whyItMatters: {
+      en: 'Urine color is a quick indicator of hydration status and can reveal blood, liver byproducts, or medication effects.',
+      es: 'El color de la orina es un indicador rápido del estado de hidratación y puede revelar sangre, subproductos hepáticos o efectos de medicamentos.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'aspecto (orina)': {
+    simpleName: { en: 'Urine Appearance', es: 'Aspecto de Orina' },
+    emoji: '👁️',
+    whatItMeasures: {
+      en: 'Whether your urine is clear or cloudy — cloudiness can indicate infection',
+      es: 'Si la orina es clara o turbia — la turbidez puede indicar infección',
+    },
+    messages: {
+      normal: { en: 'Your urine is clear — no signs of infection or contamination.', es: 'Tu orina es clara — sin signos de infección o contaminación.' },
+      borderline: { en: 'Your urine is slightly cloudy. Could be from mucus, crystals, or mild infection.', es: 'Tu orina está algo turbia. Puede ser por mucosidad, cristales o infección leve.' },
+      high: { en: 'Your urine is cloudy — can indicate infection, protein, or white blood cells. See your doctor.', es: 'Tu orina está turbia — puede indicar infección, proteína o glóbulos blancos. Consulta a tu médico.' },
+      low: { en: 'Clear urine — this is the normal appearance.', es: 'Orina clara — esta es la apariencia normal.' },
+    },
+    whyItMatters: {
+      en: 'Clear urine is normal. Cloudy urine can indicate bacteria, white blood cells, crystals, or protein — all warranting investigation.',
+      es: 'Orina clara es normal. Orina turbia puede indicar bacterias, glóbulos blancos, cristales o proteína — todos ameritan investigación.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'ph (orina)': {
+    simpleName: { en: 'Urine pH', es: 'pH Urinario' },
+    emoji: '⚗️',
+    whatItMeasures: {
+      en: 'How acidic or alkaline your urine is — reflects diet and kidney function',
+      es: 'Qué tan ácida o alcalina es la orina — refleja dieta y función renal',
+    },
+    messages: {
+      normal: { en: 'Your urine pH is in a healthy range. Acid-base balance is maintained.', es: 'El pH de tu orina está en rango normal. El equilibrio ácido-base se mantiene.' },
+      borderline: { en: 'Your urine pH is slightly off. This often reflects diet more than disease.', es: 'El pH de tu orina está algo fuera del rango. Frecuentemente refleja dieta más que enfermedad.' },
+      high: { en: 'Your urine is more alkaline than normal. Can be related to UTIs, diet, or kidney stones (certain types).', es: 'Tu orina es más alcalina de lo normal. Puede relacionarse con infecciones, dieta o cálculos renales.' },
+      low: { en: 'Your urine is more acidic than normal. Can be from high-protein diet, dehydration, or metabolic conditions.', es: 'Tu orina es más ácida de lo normal. Puede ser por dieta alta en proteínas, deshidratación o condiciones metabólicas.' },
+    },
+    whyItMatters: {
+      en: 'Urine pH helps assess kidney function and risk of kidney stones. Very acidic urine promotes uric acid stones; very alkaline urine promotes phosphate stones.',
+      es: 'El pH urinario ayuda a evaluar función renal y riesgo de cálculos. Orina muy ácida promueve cálculos de ácido úrico; muy alcalina promueve cálculos de fosfato.',
+    },
+    optimalRange: { general: { min: 5.0, max: 7.0 } },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'densidad (orina)': {
+    simpleName: { en: 'Urine Density', es: 'Densidad Urinaria' },
+    emoji: '💧',
+    whatItMeasures: {
+      en: 'How concentrated your urine is — reflects hydration and kidney concentrating ability',
+      es: 'Qué tan concentrada está la orina — refleja hidratación y capacidad renal de concentración',
+    },
+    messages: {
+      normal: { en: 'Your urine density is in a healthy range. Hydration and kidney function look good.', es: 'La densidad de tu orina está en rango normal. Hidratación y función renal bien.' },
+      borderline: { en: 'Your urine density is slightly off. Make sure you are drinking enough water.', es: 'La densidad de tu orina está algo fuera del rango. Asegúrate de tomar suficiente agua.' },
+      high: { en: 'Your urine is very concentrated — likely dehydration. Drink more water.', es: 'Tu orina está muy concentrada — probablemente deshidratación. Toma más agua.' },
+      low: { en: 'Your urine is very dilute — could indicate excessive fluid intake or kidney concentrating issues.', es: 'Tu orina está muy diluida — puede indicar exceso de líquidos o problemas de concentración renal.' },
+    },
+    whyItMatters: {
+      en: 'Urine density (specific gravity) measures how well your kidneys concentrate urine. Consistently low density can suggest kidney damage; high density usually means dehydration.',
+      es: 'La densidad urinaria mide qué tan bien concentran la orina tus riñones. Densidad persistentemente baja puede sugerir daño renal; alta usualmente indica deshidratación.',
+    },
+    optimalRange: { general: { min: 1.005, max: 1.030 } },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'células epiteliales': {
+    simpleName: { en: 'Epithelial Cells', es: 'Células Epiteliales' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Cells from the lining of the urinary tract found in your urine sample',
+      es: 'Células del revestimiento del tracto urinario encontradas en la muestra de orina',
+    },
+    messages: {
+      normal: { en: 'Few epithelial cells — normal finding. Sample collection was clean.', es: 'Pocas células epiteliales — hallazgo normal. La recolección fue limpia.' },
+      borderline: { en: 'Moderate epithelial cells — could mean the sample was slightly contaminated. Consider retesting.', es: 'Células epiteliales moderadas — puede significar contaminación leve de la muestra. Considera repetir.' },
+      high: { en: 'Many epithelial cells — the sample may be contaminated. A new sample may be needed.', es: 'Muchas células epiteliales — la muestra puede estar contaminada. Puede necesitarse una nueva muestra.' },
+      low: { en: 'Very few epithelial cells — excellent sample quality.', es: 'Muy pocas células epiteliales — excelente calidad de muestra.' },
+    },
+    whyItMatters: {
+      en: 'A few epithelial cells in urine are normal. Many cells suggest the sample may be contaminated from the skin, making other results less reliable.',
+      es: 'Pocas células epiteliales en orina son normales. Muchas sugieren contaminación de la piel, haciendo otros resultados menos confiables.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'cristales': {
+    simpleName: { en: 'Crystals', es: 'Cristales' },
+    emoji: '💎',
+    whatItMeasures: {
+      en: 'Mineral crystals in your urine — related to kidney stone risk',
+      es: 'Cristales minerales en la orina — relacionados con riesgo de cálculos renales',
+    },
+    messages: {
+      normal: { en: 'No crystals found in your urine — good for kidney stone prevention.', es: 'No se encontraron cristales en la orina — bueno para prevención de cálculos renales.' },
+      borderline: { en: 'A few crystals found. Stay well-hydrated to prevent stone formation.', es: 'Se encontraron algunos cristales. Mantente hidratado para prevenir formación de cálculos.' },
+      high: { en: 'Crystals are present in your urine. This increases kidney stone risk. Drink more water and see your doctor.', es: 'Hay cristales en la orina. Aumenta el riesgo de cálculos renales. Toma más agua y consulta a tu médico.' },
+      low: { en: 'No crystals — this is normal.', es: 'Sin cristales — esto es normal.' },
+    },
+    whyItMatters: {
+      en: 'Urinary crystals form when certain minerals become too concentrated. They are the building blocks of kidney stones. Good hydration is the best prevention.',
+      es: 'Los cristales urinarios se forman cuando ciertos minerales se concentran demasiado. Son los bloques de construcción de cálculos renales. La buena hidratación es la mejor prevención.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'cilindros': {
+    simpleName: { en: 'Casts', es: 'Cilindros' },
+    emoji: '🔬',
+    whatItMeasures: {
+      en: 'Tube-shaped protein structures formed in the kidneys — indicate kidney health',
+      es: 'Estructuras proteicas tubulares formadas en los riñones — indican salud renal',
+    },
+    messages: {
+      normal: { en: 'No significant casts found — your kidneys are healthy.', es: 'No se encontraron cilindros significativos — tus riñones están sanos.' },
+      borderline: { en: 'A few hyaline casts found — can be normal after exercise or dehydration.', es: 'Se encontraron algunos cilindros hialinos — puede ser normal tras ejercicio o deshidratación.' },
+      high: { en: 'Casts found in your urine — may indicate kidney inflammation or disease. See your doctor.', es: 'Se encontraron cilindros en la orina — puede indicar inflamación o enfermedad renal. Consulta a tu médico.' },
+      low: { en: 'No casts — this is normal.', es: 'Sin cilindros — esto es normal.' },
+    },
+    whyItMatters: {
+      en: 'Casts form in the kidney tubules. Different types indicate different conditions — hyaline casts are often benign, but granular, waxy, or red blood cell casts suggest kidney disease.',
+      es: 'Los cilindros se forman en los túbulos renales. Diferentes tipos indican diferentes condiciones — los hialinos suelen ser benignos, pero los granulares o cerosos sugieren enfermedad renal.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'bacterias': {
+    simpleName: { en: 'Bacteria', es: 'Bacterias' },
+    emoji: '🦠',
+    whatItMeasures: {
+      en: 'Whether bacteria are present in your urine, which can indicate infection',
+      es: 'Si hay bacterias presentes en la orina, lo cual puede indicar infección',
+    },
+    messages: {
+      normal: { en: 'No bacteria found in your urine — no signs of infection.', es: 'No se encontraron bacterias en la orina — sin signos de infección.' },
+      borderline: { en: 'A few bacteria found — could be contamination or early infection. Monitor symptoms.', es: 'Se encontraron pocas bacterias — puede ser contaminación o infección temprana. Vigila síntomas.' },
+      high: { en: 'Bacteria are present in your urine — strongly suggests a urinary tract infection. See your doctor.', es: 'Hay bacterias en la orina — sugiere fuertemente una infección urinaria. Consulta a tu médico.' },
+      low: { en: 'No bacteria — this is normal.', es: 'Sin bacterias — esto es normal.' },
+    },
+    whyItMatters: {
+      en: 'Bacteria in urine (bacteriuria) usually indicate a urinary tract infection, especially when combined with positive nitrites and white blood cells.',
+      es: 'Bacterias en orina (bacteriuria) usualmente indican infección urinaria, especialmente combinadas con nitritos positivos y glóbulos blancos.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
+
+  'levaduras': {
+    simpleName: { en: 'Yeast', es: 'Levaduras' },
+    emoji: '🍄',
+    whatItMeasures: {
+      en: 'Whether yeast (fungal organisms) are present in your urine',
+      es: 'Si hay levaduras (organismos fúngicos) presentes en la orina',
+    },
+    messages: {
+      normal: { en: 'No yeast found in your urine — no signs of fungal infection.', es: 'No se encontraron levaduras en la orina — sin signos de infección fúngica.' },
+      borderline: { en: 'A few yeast cells found — could be contamination or early fungal infection.', es: 'Se encontraron pocas levaduras — puede ser contaminación o infección fúngica temprana.' },
+      high: { en: 'Yeast is present in your urine — may indicate a fungal urinary infection. See your doctor.', es: 'Hay levaduras en la orina — puede indicar infección urinaria fúngica. Consulta a tu médico.' },
+      low: { en: 'No yeast — this is normal.', es: 'Sin levaduras — esto es normal.' },
+    },
+    whyItMatters: {
+      en: 'Yeast in urine can indicate a fungal urinary tract infection, common in people with diabetes, weakened immunity, or on antibiotics.',
+      es: 'Las levaduras en orina pueden indicar infección urinaria fúngica, común en personas con diabetes, inmunidad debilitada o en tratamiento con antibióticos.',
+    },
+    sampleType: 'urine',
+    reviewEveryMonths: 12,
+  },
 };
 
 // ── Alias map for AI-extracted names that may differ from keys ────────────────
@@ -2399,6 +3083,51 @@ const ALIASES: Record<string, string> = {
   'leucocitos (orina)':      'leucocitos (orina)',
   'leucocitos en orina':     'leucocitos (orina)',
   'glóbulos blancos en orina':'glóbulos blancos (orina)',
+  // Hematology aliases
+  'basofilos':               'basófilos',
+  'eosinofilos':             'eosinófilos',
+  'glóbulos rojos':          'eritrocitos',
+  'globulos rojos':          'eritrocitos',
+  'mcv':                     'vcm',
+  'mch':                     'hcm',
+  'mchc':                    'chcm',
+  'ccmh':                    'chcm',
+  // Renal aliases
+  'bun':                     'nitrógeno de urea',
+  'nitrógeno ureico':        'nitrógeno de urea',
+  'nitrogeno de urea':       'nitrógeno de urea',
+  'nitrogeno ureico':        'nitrógeno de urea',
+  'acido urico':             'ácido úrico',
+  // Liver aliases
+  'proteinas totales':       'proteínas totales',
+  'alp':                     'fosfatasa alcalina',
+  'relacion a/g':            'relación a/g',
+  // Metabolic aliases
+  'ck':                      'cpk',
+  'creatina quinasa':        'cpk',
+  'creatina kinasa':         'cpk',
+  'lactato deshidrogenasa':  'ldh',
+  'deshidrogenasa láctica':  'ldh',
+  // Iron aliases
+  'iron':                    'hierro',
+  'saturacion de transferrina': 'saturación de transferrina',
+  // Thyroid aliases
+  'ft3':                     't3 libre',
+  'ft4':                     't4 libre',
+  // Urine physical aliases
+  'color':                   'color (orina)',
+  'color orina':             'color (orina)',
+  'aspecto':                 'aspecto (orina)',
+  'aspecto orina':           'aspecto (orina)',
+  'ph':                      'ph (orina)',
+  'ph orina':                'ph (orina)',
+  'ph urinario':             'ph (orina)',
+  'densidad':                'densidad (orina)',
+  'densidad orina':          'densidad (orina)',
+  'densidad urinaria':       'densidad (orina)',
+  'gravedad específica':     'densidad (orina)',
+  'celulas epiteliales':     'células epiteliales',
+  'células epiteliales planas': 'células epiteliales',
 };
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────

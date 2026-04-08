@@ -162,6 +162,7 @@ export default function TestsScreen() {
     const sessions = useStore((s) => s.sessions);
     const language = useStore((s) => s.language);
     const isPro = useStore((s) => s.isPro);
+    const isGuest = useStore((s) => s.isGuest);
 
     const [state, setState] = useState<UploadState>('list');
     const [lastUploadCount, setLastUploadCount] = useState(0);
@@ -356,6 +357,19 @@ export default function TestsScreen() {
                 >
                     <Text style={styles.doneBtnText}>{t('viewResults')}</Text>
                 </TouchableOpacity>
+
+                {isGuest && sessions.length === 1 && (
+                    <View style={styles.signupPromptCard}>
+                        <Text style={styles.signupPromptText}>{t('createAccountPrompt')}</Text>
+                        <TouchableOpacity
+                            style={styles.signupPromptBtn}
+                            onPress={() => { setState('list'); router.push('/onboarding/auth'); }}
+                            activeOpacity={0.85}
+                        >
+                            <Text style={styles.signupPromptBtnText}>{t('authCreateAccount')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
         </SafeAreaView>
     );
@@ -793,5 +807,35 @@ const styles = StyleSheet.create({
     doneSecondaryText: {
         fontFamily: Typography.families.body,
         fontSize: 14, color: Colors.primary, fontWeight: '600',
+    },
+    signupPromptCard: {
+        backgroundColor: Colors.surface,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: Colors.border,
+        padding: 20,
+        marginTop: 20,
+        alignItems: 'center',
+        maxWidth: 320,
+    },
+    signupPromptText: {
+        fontFamily: Typography.families.body,
+        fontSize: 14,
+        color: Colors.mutedForeground,
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 14,
+    },
+    signupPromptBtn: {
+        backgroundColor: Colors.primary10,
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 20,
+    },
+    signupPromptBtnText: {
+        fontFamily: Typography.families.body,
+        fontSize: 14,
+        fontWeight: '700',
+        color: Colors.primary,
     },
 });

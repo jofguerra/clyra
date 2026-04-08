@@ -8,9 +8,12 @@ import {
     ScrollView,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    TouchableOpacity,
+    Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Activity, TrendingUp, Sparkles } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Button from '../../components/ui/Button';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
@@ -31,21 +34,51 @@ export default function WelcomeScreen() {
     const t = useT();
     const scrollRef = useRef<ScrollView>(null);
     const [activeIndex, setActiveIndex] = useState(0);
+    const tapCount = useRef(0);
+    const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const index = Math.round(e.nativeEvent.contentOffset.x / width);
         setActiveIndex(index);
     };
 
+    const handleLogoTap = () => {
+        tapCount.current += 1;
+        if (tapTimer.current) clearTimeout(tapTimer.current);
+        if (tapCount.current >= 3) {
+            tapCount.current = 0;
+            Alert.alert(
+                'Reset App Data',
+                'This will erase all data and restart the app. Are you sure?',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Reset',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await AsyncStorage.clear();
+                            // Force reload by navigating to root
+                            router.replace('/onboarding');
+                        },
+                    },
+                ],
+            );
+            return;
+        }
+        tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 800);
+    };
+
     return (
         <SafeAreaView style={styles.container}>
-            {/* Logo at top */}
-            <View style={styles.logoRow}>
-                <View style={styles.logoBox}>
-                    <Activity color={Colors.primaryForeground} size={28} />
+            {/* Logo at top — triple-tap to reset */}
+            <TouchableOpacity activeOpacity={0.9} onPress={handleLogoTap}>
+                <View style={styles.logoRow}>
+                    <View style={styles.logoBox}>
+                        <Activity color={Colors.primaryForeground} size={28} />
+                    </View>
+                    <Text style={styles.logoText}>Clyra</Text>
                 </View>
-                <Text style={styles.logoText}>Clyra</Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Swipeable slides */}
             <ScrollView
