@@ -21,6 +21,7 @@ const defaultBiomarkersList = [
   "Glucosa", "Glucosa en Ayunas", "Hemoglobina A1c", "HbA1c", "Insulina",
   // Renal
   "Creatinina", "Ácido Úrico", "Urea", "BUN", "Sodio", "Potasio",
+  "PSA", "PSA Total", "Antígeno Prostático Específico",
   // Hepático
   "AST", "ALT", "GGT", "Bilirrubina Total", "Albúmina", "Fosfatasa Alcalina",
   // Tiroideo
@@ -90,6 +91,164 @@ async function poll<T>(
 }
 
 /**
+ * Fallback extraction using Chat Completions API with file content.
+ * Used when the Assistants API + file_search fails (common with short PDFs).
+ * Retrieves the file content and sends it directly to gpt-4o.
+ */
+async function extractWithChatCompletionsFallback(fileId: string): Promise<LabResult> {
+  // Download the file content from OpenAI
+  const contentRes = await fetch(`https://api.openai.com/v1/files/${fileId}/content`, {
+    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
+  });
+
+  let fileContentForPrompt: string;
+
+  if (contentRes.ok) {
+    // Try to get text content; for PDFs this returns raw bytes so we use base64
+    const contentType = contentRes.headers.get('content-type') ?? '';
+    if (contentType.includes('text') || contentType.includes('json')) {
+      fileContentForPrompt = await contentRes.text();
+    } else {
+      // Binary content (PDF) — read as base64 for the vision API
+      const blob = await contentRes.blob();
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1] ?? result);
+        };
+        reader.readAsDataURL(blob);
+      });
+      const base64 = await base64Promise;
+
+      // Use vision endpoint with the PDF as an image
+      __DEV__ && console.log('[Clyra] Fallback: sending PDF as base64 to vision API...');
+      const visionRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert medical assistant. Extract ALL biomarkers/test results from this lab report — even if there is only ONE result. Do NOT return an empty array.
+Look for: ${defaultBiomarkersList.join(', ')}, and any other lab value present.
+Also extract the test date.
+RESPOND ONLY with valid JSON: {"testDate":"YYYY-MM-DD or null","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'text',
+                  text: 'Extract every biomarker from this lab report. Even if there is only 1 result, return it.',
+                },
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:application/pdf;base64,${base64}`,
+                    detail: 'high',
+                  },
+                },
+              ],
+            },
+          ],
+          max_tokens: 4096,
+          temperature: 0.2,
+        }),
+      });
+
+      if (!visionRes.ok) {
+        throw new Error(`Vision fallback failed: ${visionRes.status}`);
+      }
+
+      const visionData = await visionRes.json();
+      fileContentForPrompt = visionData.choices?.[0]?.message?.content?.trim() ?? '';
+
+      // Parse the vision response directly
+      return parseBiomarkerJSON(fileContentForPrompt);
+    }
+  } else {
+    throw new Error(`Could not retrieve file content: ${contentRes.status}`);
+  }
+
+  // If we got text content, send it to Chat Completions
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert medical assistant. Extract ALL biomarkers/test results from this lab report text — even if there is only ONE result. Do NOT return an empty array.
+Look for: ${defaultBiomarkersList.join(', ')}, and any other lab value present.
+Also extract the test date.
+RESPOND ONLY with valid JSON: {"testDate":"YYYY-MM-DD or null","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
+        },
+        {
+          role: 'user',
+          content: `Here is the lab report text:\n\n${fileContentForPrompt.slice(0, 12000)}\n\nExtract every biomarker. Even if only 1 result exists, return it.`,
+        },
+      ],
+      max_tokens: 4096,
+      temperature: 0.2,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Chat completions fallback failed: ${res.status}`);
+  }
+
+  const data = await res.json();
+  const responseText = data.choices?.[0]?.message?.content?.trim() ?? '';
+  return parseBiomarkerJSON(responseText);
+}
+
+/**
+ * Parses biomarker JSON from a raw text response (handles both object and array formats).
+ */
+function parseBiomarkerJSON(text: string): LabResult {
+  text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+  let biomarkers: Biomarker[] = [];
+  let testDate: string | null = null;
+
+  const objMatch = text.match(/\{[\s\S]*\}/);
+  const arrMatch = text.match(/\[[\s\S]*\]/);
+
+  if (objMatch) {
+    try {
+      const parsed = JSON.parse(objMatch[0]);
+      if (parsed.biomarkers && Array.isArray(parsed.biomarkers)) {
+        biomarkers = parsed.biomarkers;
+        testDate = parsed.testDate ?? null;
+      } else if (Array.isArray(parsed)) {
+        biomarkers = parsed;
+      }
+    } catch {
+      if (arrMatch) {
+        try { biomarkers = JSON.parse(arrMatch[0]); } catch { /* ignore */ }
+      }
+    }
+  } else if (arrMatch) {
+    try { biomarkers = JSON.parse(arrMatch[0]); } catch { /* ignore */ }
+  }
+
+  if (testDate && !/^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
+    testDate = null;
+  }
+
+  return { biomarkers, testDate };
+}
+
+/**
  * Extracts biomarkers from a PDF using OpenAI Assistants API.
  * Uses fetch + FormData for reliable file upload on React Native.
  */
@@ -155,10 +314,12 @@ export const extractLabResultsFromPDF = async (
   const { id: assistant_id } = await apiPost('https://api.openai.com/v1/assistants', {
     model: 'gpt-4o',
     name: 'Lab Data Extractor',
-    instructions: `You are an expert medical assistant. Extract all biomarkers from the attached lab report (look especially for: ${defaultBiomarkersList.join(', ')}).
+    instructions: `You are an expert medical assistant. Extract ALL biomarkers/test results from the attached lab report — even if there is only ONE single result in the entire document. Do not skip any test result.
+Look especially for: ${defaultBiomarkersList.join(', ')}, but also extract ANY other lab value you find.
 Also extract the test/collection date from the document (look for "Fecha", "Date", "Collection Date", "Report Date", etc.).
 Compare against standard adult reference ranges if not shown in the document.
 Classify as "borderline" if a value is at the edge of the normal range.
+IMPORTANT: Even if the document contains only 1 biomarker, you MUST return it. An empty biomarkers array is NEVER acceptable if the document contains any test result.
 RESPOND ONLY with a valid JSON object — no extra text, no markdown, no explanations.
 Required format:
 {"testDate":"YYYY-MM-DD or null if not found","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
@@ -171,7 +332,7 @@ Required format:
   const { id: thread_id } = await apiPost('https://api.openai.com/v1/threads', {
     messages: [{
       role: 'user',
-      content: 'Extrae todos los biomarcadores del documento. Responde SOLO con el array JSON, sin texto adicional.',
+      content: 'Search the attached PDF and extract every single lab test result / biomarker. Even if there is only ONE result (e.g. PSA Total), you MUST include it. Return the JSON object with testDate and biomarkers array. Do NOT return an empty array.',
     }],
   });
 
@@ -238,48 +399,21 @@ Required format:
   }
 
   if (!Array.isArray(biomarkers) || biomarkers.length === 0) {
-    // Retry once: sometimes the Assistants API fails to extract on first try
-    __DEV__ && console.log('[Clyra] No biomarkers on first attempt, retrying in 2s...');
-    await new Promise(r => setTimeout(r, 2000));
+    // Fallback: use Chat Completions API with the file content directly
+    // The Assistants API + file_search can struggle with very short PDFs (1-2 results)
+    __DEV__ && console.log('[Clyra] No biomarkers from Assistants API, trying Chat Completions fallback...');
 
-    const retryMessages = await apiGet(`https://api.openai.com/v1/threads/${thread_id}/messages`);
-    // Create a new run for the retry
-    const { id: retry_run_id } = await apiPost(`https://api.openai.com/v1/threads/${thread_id}/runs`, {
-      assistant_id,
-    });
-    await poll(
-      () => apiGet(`https://api.openai.com/v1/threads/${thread_id}/runs/${retry_run_id}`),
-      (d) => d.status === 'completed',
-      (d) => ['failed', 'cancelled', 'expired', 'requires_action'].includes(d.status),
-      2000, 40,
-    );
-
-    const retryMsgsData = await apiGet(`https://api.openai.com/v1/threads/${thread_id}/messages`);
-    const retryMsg = retryMsgsData.data?.find((m: any) => m.role === 'assistant');
-    if (retryMsg) {
-      const retryTextBlock = retryMsg.content?.find((c: any) => c.type === 'text');
-      if (retryTextBlock) {
-        let retryText: string = retryTextBlock.text.value ?? '';
-        retryText = retryText.replace(/【[^】]*】/g, '');
-        retryText = retryText.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const retryObjMatch = retryText.match(/\{[\s\S]*\}/);
-        const retryArrMatch = retryText.match(/\[[\s\S]*\]/);
-        if (retryObjMatch) {
-          try {
-            const parsed = JSON.parse(retryObjMatch[0]);
-            if (parsed.biomarkers && Array.isArray(parsed.biomarkers)) {
-              biomarkers = parsed.biomarkers;
-              testDate = parsed.testDate ?? null;
-            } else if (Array.isArray(parsed)) {
-              biomarkers = parsed;
-            }
-          } catch { /* ignore */ }
-        } else if (retryArrMatch) {
-          try { biomarkers = JSON.parse(retryArrMatch[0]); } catch { /* ignore */ }
-        }
+    try {
+      const fallbackResult = await extractWithChatCompletionsFallback(file_id);
+      if (fallbackResult.biomarkers.length > 0) {
+        biomarkers = fallbackResult.biomarkers;
+        testDate = fallbackResult.testDate;
       }
+    } catch (e) {
+      __DEV__ && console.log('[Clyra] Chat Completions fallback failed:', e);
     }
-    __DEV__ && console.log(`[Clyra] Retry result: ${biomarkers?.length ?? 0} biomarkers`);
+
+    __DEV__ && console.log(`[Clyra] Fallback result: ${biomarkers?.length ?? 0} biomarkers`);
 
     if (!Array.isArray(biomarkers) || biomarkers.length === 0) {
       throw new Error('No biomarkers found in the document.');

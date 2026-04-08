@@ -3128,6 +3128,16 @@ const ALIASES: Record<string, string> = {
   'gravedad específica':     'densidad (orina)',
   'celulas epiteliales':     'células epiteliales',
   'células epiteliales planas': 'células epiteliales',
+  // Prostate
+  'psa':                     'psa total',
+  'antigeno prostatico especifico': 'psa total',
+  'antígeno prostático específico': 'psa total',
+  'antigeno prostatico':     'psa total',
+  'antígeno prostático':     'psa total',
+  'prostate-specific antigen': 'psa total',
+  'prostate specific antigen': 'psa total',
+  'free psa':                'psa libre',
+  'psa free':                'psa libre',
 };
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────
