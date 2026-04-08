@@ -247,12 +247,15 @@ export default function DashboardScreen() {
 
         {/* ── 0. Lottie Hero ── */}
         <AnimatedSection delay={0} style={styles.heroSection}>
-          <LottieView
-            source={require('../../assets/animations/heart-hero.json')}
-            autoPlay
-            loop
-            style={styles.heroLottie}
-          />
+          <View style={styles.heroContainer}>
+            <LottieView
+              source={require('../../assets/animations/heart-hero.json')}
+              autoPlay
+              loop
+              style={styles.heroLottie}
+              resizeMode="cover"
+            />
+          </View>
         </AnimatedSection>
 
         {/* ── 1. Welcome ── */}
@@ -434,8 +437,11 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 100 },
 
   // Hero Lottie
-  heroSection: { alignItems: 'center', marginBottom: 4, marginTop: -8 },
-  heroLottie: { width: 200, height: 130 },
+  heroSection: { alignItems: 'center', marginBottom: 4, marginTop: -12, marginHorizontal: -20 },
+  heroContainer: {
+    width: '100%', aspectRatio: 1123 / 500, borderRadius: 20, overflow: 'hidden',
+  },
+  heroLottie: { width: '100%', height: '100%' },
 
   // Greeting
   greetingSection: { marginBottom: 16, alignItems: 'center' },
