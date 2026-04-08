@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Heart Monitor Animation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #dae9f8;
+      overflow: hidden;
+    }
+    .scene {
+      position: relative;
+      width: 1122px;
+      height: 842px;
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+    .scene > * {
+      position: absolute;
+      top: 0; left: 0;
+    }
+
+    /* --- Background layer --- */
+    .bg {
+      width: 100%; height: 100%;
+      z-index: 1;
+    }
+
+    /* --- Screen (monitor) layer --- */
+    .screen-layer {
+      z-index: 2;
+      width: 310px;
+      left: 170px;
+      top: 240px;
+      transform-origin: bottom center;
+      animation: screenIdle 4s ease-in-out infinite;
+    }
+    @keyframes screenIdle {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(0.5deg); }
+    }
+
+    /* ECG line animation */
+    .screen-layer .ecg-line {
+      stroke-dasharray: 600;
+      stroke-dashoffset: 600;
+      animation: drawECG 2s ease-in-out infinite;
+    }
+
+    /* --- Heart character layer --- */
+    .heart-layer {
+      z-index: 3;
+      width: 520px;
+      left: 370px;
+      top: 180px;
+      transform-origin: bottom center;
+      animation: heartBreathe 3s ease-in-out infinite;
+    }
+    @keyframes heartBreathe {
+      0%, 100% { transform: scale(1) translateY(0); }
+      40% { transform: scale(1.02) translateY(-4px); }
+      60% { transform: scale(1.02) translateY(-4px); }
+    }
+
+    /* Heart arm wave (left arm touching screen) */
+    .heart-layer .arm-left {
+      transform-origin: 170px 240px;
+      animation: armWave 4s ease-in-out infinite;
+    }
+    @keyframes armWave {
+      0%, 100% { transform: rotate(0deg); }
+      50% { transform: rotate(-2deg) translateY(-2px); }
+    }
+
+    /* Subtle face blink */
+    .heart-layer .eye-left,
+    .heart-layer .eye-right {
+      animation: blink 4s ease-in-out infinite;
+    }
+    .heart-layer .eye-right {
+      animation-delay: 0.05s;
+    }
+    @keyframes blink {
+      0%, 42%, 48%, 100% { transform: scaleY(1); }
+      45% { transform: scaleY(0.1); }
+    }
+
+    /* Shine highlight pulse */
+    .heart-layer .shine {
+      animation: shinePulse 3s ease-in-out infinite;
+    }
+    @keyframes shinePulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    /* --- Foreground bushes --- */
+    .front-layer {
+      z-index: 4;
+      width: 100%;
+      bottom: -10px;
+      top: auto;
+      animation: bushSway 5s ease-in-out infinite;
+    }
+    @keyframes bushSway {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(3px); }
+    }
+
+    /* --- ECG draw animation via JS --- */
+    @keyframes drawECG {
+      0%   { stroke-dashoffset: 600; }
+      100% { stroke-dashoffset: 0; }
+    }
+
+    /* --- Shadow under heart --- */
+    .shadow {
+      z-index: 2;
+      width: 280px;
+      height: 30px;
+      background: radial-gradient(ellipse, rgba(0,0,0,0.12) 0%, transparent 70%);
+      left: 490px;
+      top: 670px;
+      border-radius: 50%;
+      animation: shadowBreathe 3s ease-in-out infinite;
+    }
+    @keyframes shadowBreathe {
+      0%, 100% { transform: scaleX(1); opacity: 0.8; }
+      40% { transform: scaleX(0.95); opacity: 0.6; }
+      60% { transform: scaleX(0.95); opacity: 0.6; }
+    }
+
+    /* --- Monitor glow --- */
+    .monitor-glow {
+      z-index: 2;
+      width: 260px;
+      height: 160px;
+      left: 205px;
+      top: 275px;
+      background: radial-gradient(ellipse, rgba(179, 240, 166, 0.15) 0%, transparent 70%);
+      border-radius: 20px;
+      animation: glowPulse 2s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.4; }
+      50% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="scene" id="scene">
+  <!-- Background -->
+  <img class="bg" src="BG_1.svg" alt="Background">
+
+  <!-- Shadow under heart -->
+  <div class="shadow"></div>
+
+  <!-- Screen / Monitor -->
+  <div class="screen-layer" id="screenLayer"></div>
+
+  <!-- Monitor glow effect -->
+  <div class="monitor-glow"></div>
+
+  <!-- Heart character -->
+  <div class="heart-layer" id="heartLayer"></div>
+
+  <!-- Foreground bushes -->
+  <img class="front-layer" src="Front.svg" alt="Foreground">
+</div>
+
+<script>
+  // Load SVGs inline so we can animate individual elements
+  async function loadSVGInline(url, container, setupFn) {
+    const resp = await fetch(url);
+    const text = await resp.text();
+    container.innerHTML = text;
+    const svg = container.querySelector('svg');
+    if (svg && setupFn) setupFn(svg);
+  }
+
+  // Setup Screen SVG: animate the ECG polyline
+  function setupScreen(svg) {
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+
+    const polyline = svg.querySelector('polyline');
+    if (polyline) {
+      const length = polyline.getTotalLength ? polyline.getTotalLength() : 600;
+      polyline.classList.add('ecg-line');
+      polyline.style.strokeDasharray = length;
+      polyline.style.strokeDashoffset = length;
+      polyline.style.animation = `drawECG 2.2s ease-in-out infinite`;
+    }
+  }
+
+  // Setup Heart SVG: tag elements for CSS animation
+  function setupHeart(svg) {
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.style.overflow = 'visible';
+
+    const circles = svg.querySelectorAll('circle');
+    // Eyes are the small dark circles (cls-3)
+    const eyes = [];
+    circles.forEach(c => {
+      const r = parseFloat(c.getAttribute('r'));
+      const fill = c.getAttribute('class');
+      if (fill && fill.includes('cls-3') && r < 15) {
+        eyes.push(c);
+      }
+    });
+    if (eyes[0]) {
+      eyes[0].classList.add('eye-left');
+      eyes[0].style.transformOrigin = `${eyes[0].getAttribute('cx')}px ${eyes[0].getAttribute('cy')}px`;
+    }
+    if (eyes[1]) {
+      eyes[1].classList.add('eye-right');
+      eyes[1].style.transformOrigin = `${eyes[1].getAttribute('cx')}px ${eyes[1].getAttribute('cy')}px`;
+    }
+
+    // Shine highlights (cls-6 paths that are small)
+    const paths = svg.querySelectorAll('.cls-6');
+    if (paths.length > 0) {
+      paths[0].classList.add('shine');
+    }
+  }
+
+  // Load both inline
+  loadSVGInline('Screen.svg', document.getElementById('screenLayer'), setupScreen);
+  loadSVGInline('Heart.svg', document.getElementById('heartLayer'), setupHeart);
+</script>
+
+</body>
+</html>

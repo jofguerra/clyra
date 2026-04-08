@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Animated, Easing,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import LottieView from 'lottie-react-native';
 import { useRouter } from 'expo-router';
 import {
   ShieldCheck, TrendingUp, TrendingDown, Minus,
@@ -112,6 +113,39 @@ function MarkerRow({ biomarker, language, t, onPress }: {
   );
 }
 
+// ─── Animated entrance wrapper ──────────────────────────────────────────────
+
+function AnimatedSection({ children, delay = 0, style }: {
+  children: React.ReactNode; delay?: number; style?: any;
+}) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(18)).current;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1, duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0, duration: 500,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Animated.View style={[style, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {children}
+    </Animated.View>
+  );
+}
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
@@ -211,55 +245,67 @@ export default function DashboardScreen() {
       <AppHeader />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
+        {/* ── 0. Lottie Hero ── */}
+        <AnimatedSection delay={0} style={styles.heroSection}>
+          <LottieView
+            source={require('../../assets/animations/heart-hero.json')}
+            autoPlay
+            loop
+            style={styles.heroLottie}
+          />
+        </AnimatedSection>
+
         {/* ── 1. Welcome ── */}
-        <View style={styles.greetingSection}>
+        <AnimatedSection delay={100} style={styles.greetingSection}>
           <Text style={styles.greetingName}>
             {t('greeting')}{userName ? `, ${userName}` : ''}
           </Text>
           <Text style={styles.greetingSub}>
             {hasBiomarkers ? t('homeSummary') : t('coachNoData')}
           </Text>
-        </View>
+        </AnimatedSection>
 
         {hasBiomarkers ? (
           <>
             {/* ── 2. Score Card ── */}
-            <View style={styles.scoreBento}>
-              <View style={styles.scoreLeft}>
-                <ScoreGauge score={healthScore} size={130} />
-              </View>
-              <View style={styles.scoreRight}>
-                <LevelBadge score={healthScore} language={language} />
-
-                {/* Score change */}
-                <View style={styles.trendRow}>
-                  <TrendIcon size={13} color={trendColor} />
-                  <Text style={[styles.trendText, { color: trendColor }]}>
-                    {scoreDelta !== null
-                      ? `${scoreDelta > 0 ? '+' : ''}${scoreDelta} ${t('vsLastTest')}`
-                      : t('noChangeYet')}
-                  </Text>
+            <AnimatedSection delay={200}>
+              <View style={styles.scoreBento}>
+                <View style={styles.scoreLeft}>
+                  <ScoreGauge score={healthScore} size={130} />
                 </View>
+                <View style={styles.scoreRight}>
+                  <LevelBadge score={healthScore} language={language} />
 
-                {/* Bio age */}
-                {bioAge && (
-                  <View style={[styles.bioAgeRow, { backgroundColor: bioAgeColor + '12' }]}>
-                    <Baby size={13} color={bioAgeColor} />
-                    <Text style={[styles.bioAgeNum, { color: bioAgeColor }]}>
-                      {bioAge.biologicalAge} {language === 'es' ? 'anos bio' : 'bio yrs'}
+                  {/* Score change */}
+                  <View style={styles.trendRow}>
+                    <TrendIcon size={13} color={trendColor} />
+                    <Text style={[styles.trendText, { color: trendColor }]}>
+                      {scoreDelta !== null
+                        ? `${scoreDelta > 0 ? '+' : ''}${scoreDelta} ${t('vsLastTest')}`
+                        : t('noChangeYet')}
                     </Text>
                   </View>
-                )}
 
-                {/* Optimal range percentage */}
-                <Text style={styles.optimalPctText}>
-                  {t('optimalRangePct', { n: optimalPct })}
-                </Text>
+                  {/* Bio age */}
+                  {bioAge && (
+                    <View style={[styles.bioAgeRow, { backgroundColor: bioAgeColor + '12' }]}>
+                      <Baby size={13} color={bioAgeColor} />
+                      <Text style={[styles.bioAgeNum, { color: bioAgeColor }]}>
+                        {bioAge.biologicalAge} {language === 'es' ? 'anos bio' : 'bio yrs'}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Optimal range percentage */}
+                  <Text style={styles.optimalPctText}>
+                    {t('optimalRangePct', { n: optimalPct })}
+                  </Text>
+                </View>
               </View>
-            </View>
+            </AnimatedSection>
 
-            {/* ── 2. Body Map ── */}
-            <View style={[styles.section, { alignItems: 'center' }]}>
+            {/* ── 3. Body Map ── */}
+            <AnimatedSection delay={350} style={[styles.section, { alignItems: 'center' }]}>
               <Text style={[styles.sectionTitle, { alignSelf: 'flex-start' }]}>{t('yourBody')}</Text>
               <Text style={[styles.sectionSub, { alignSelf: 'flex-start' }]}>{t('bodyMapSubtitle')}</Text>
               <BodyMap
@@ -267,10 +313,10 @@ export default function DashboardScreen() {
                 selectedSystemId={bodyMapSystemId}
                 onSelectSystem={handleBodyMapSelect}
               />
-            </View>
+            </AnimatedSection>
 
-            {/* ── 3. Unified Markers list with tab-style filter ── */}
-            <View style={styles.section}>
+            {/* ── 4. Unified Markers list with tab-style filter ── */}
+            <AnimatedSection delay={500} style={styles.section}>
               <Text style={styles.sectionTitle}>{t('allMarkersTitle')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
                 <View style={styles.tabRow}>
@@ -298,11 +344,11 @@ export default function DashboardScreen() {
                     onPress={() => router.push(`/biomarker/${encodeURIComponent(b.name)}` as any)} />
                 ))}
               </View>
-            </View>
+            </AnimatedSection>
 
-            {/* ── 4. Risk Dashboard ── */}
+            {/* ── 5. Risk Dashboard ── */}
             {(cardioRisk || metaRisk || inflaRisk || criticalMarkers.length > 0) && (
-              <View style={styles.section}>
+              <AnimatedSection delay={650} style={styles.section}>
                 <Text style={styles.sectionTitle}>{t('riskScores')}</Text>
 
                 {/* Urgent alerts banner */}
@@ -347,28 +393,32 @@ export default function DashboardScreen() {
                     );
                   })}
                 </View>
-              </View>
+              </AnimatedSection>
             )}
 
-            {/* ── 5. Share with Doctor ── */}
-            <TouchableOpacity style={styles.shareBtn} onPress={handleShareWithDoctor} activeOpacity={0.8}>
-              <FileText size={14} color={Colors.mutedForeground} />
-              <Text style={styles.shareBtnText}>{t('shareWithDoctor')}</Text>
-            </TouchableOpacity>
+            {/* ── 6. Share with Doctor ── */}
+            <AnimatedSection delay={750}>
+              <TouchableOpacity style={styles.shareBtn} onPress={handleShareWithDoctor} activeOpacity={0.8}>
+                <FileText size={14} color={Colors.mutedForeground} />
+                <Text style={styles.shareBtnText}>{t('shareWithDoctor')}</Text>
+              </TouchableOpacity>
+            </AnimatedSection>
           </>
         ) : (
           /* ── Empty state ── */
           <View>
-            <View style={[styles.section, { alignItems: 'center' }]}>
+            <AnimatedSection delay={200} style={[styles.section, { alignItems: 'center' }]}>
               <Text style={[styles.sectionTitle, { alignSelf: 'flex-start' }]}>{t('yourBody')}</Text>
               <Text style={[styles.sectionSub, { alignSelf: 'flex-start' }]}>{t('bodyMapSubtitle')}</Text>
               <BodyMap biomarkers={[]} />
-            </View>
-            <TouchableOpacity style={styles.uploadCTA}
-              onPress={() => router.push('/(tabs)/upload' as any)} activeOpacity={0.85}>
-              <Upload size={20} color={Colors.primary} />
-              <Text style={styles.uploadCTAText}>{t('uploadResults')}</Text>
-            </TouchableOpacity>
+            </AnimatedSection>
+            <AnimatedSection delay={400}>
+              <TouchableOpacity style={styles.uploadCTA}
+                onPress={() => router.push('/(tabs)/upload' as any)} activeOpacity={0.85}>
+                <Upload size={20} color={Colors.primary} />
+                <Text style={styles.uploadCTAText}>{t('uploadResults')}</Text>
+              </TouchableOpacity>
+            </AnimatedSection>
           </View>
         )}
       </ScrollView>
@@ -383,16 +433,20 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 20, paddingBottom: 100 },
 
+  // Hero Lottie
+  heroSection: { alignItems: 'center', marginBottom: 4, marginTop: -8 },
+  heroLottie: { width: 200, height: 130 },
+
   // Greeting
-  greetingSection: { marginBottom: 16 },
+  greetingSection: { marginBottom: 16, alignItems: 'center' },
   greetingName: {
     fontFamily: Typography.families.display,
     fontSize: 26, fontWeight: '800', color: Colors.foreground,
-    letterSpacing: -0.5, marginBottom: 6,
+    letterSpacing: -0.5, marginBottom: 6, textAlign: 'center',
   },
   greetingSub: {
     fontFamily: Typography.families.body,
-    fontSize: 14, color: Colors.mutedForeground, lineHeight: 20,
+    fontSize: 14, color: Colors.mutedForeground, lineHeight: 20, textAlign: 'center',
   },
 
   // Score bento
