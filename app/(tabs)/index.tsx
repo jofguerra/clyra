@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, SafeAreaView,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Animated, Easing,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
@@ -10,7 +10,7 @@ import {
   ShieldCheck, TrendingUp, TrendingDown, Minus,
   Heart, Zap, Flame, Baby, ChevronRight, Upload, FileText,
 } from 'lucide-react-native';
-import AppHeader from '../../components/AppHeader';
+// AppHeader removed from home — hero takes full top
 import BodyMap from '../../components/BodyMap';
 import LevelBadge from '../../components/ui/LevelBadge';
 import { Colors } from '../../constants/colors';
@@ -241,11 +241,10 @@ export default function DashboardScreen() {
   const bodyMapSystemId = activeFilter;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <AppHeader />
+    <View style={styles.safeArea}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* ── 0. Lottie Hero ── */}
+        {/* ── 0. Lottie Hero (full bleed to top) ── */}
         <AnimatedSection delay={0} style={styles.heroSection}>
           <View style={styles.heroContainer}>
             <LottieView
@@ -425,7 +424,7 @@ export default function DashboardScreen() {
           </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -434,17 +433,17 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
-  content: { padding: 20, paddingBottom: 100 },
+  content: { paddingBottom: 100 },
 
-  // Hero Lottie
-  heroSection: { alignItems: 'center', marginBottom: 4, marginTop: -12, marginHorizontal: -20 },
+  // Hero Lottie — full bleed to top edge
+  heroSection: { alignItems: 'center', marginBottom: 8 },
   heroContainer: {
-    width: '100%', aspectRatio: 1123 / 500, borderRadius: 20, overflow: 'hidden',
+    width: '100%', aspectRatio: 1123 / 620, overflow: 'hidden',
   },
-  heroLottie: { width: '100%', height: '100%' },
+  heroLottie: { width: '100%', height: '140%', marginTop: '-10%' },
 
   // Greeting
-  greetingSection: { marginBottom: 16, alignItems: 'center' },
+  greetingSection: { marginBottom: 16, alignItems: 'center', paddingHorizontal: 20 },
   greetingName: {
     fontFamily: Typography.families.display,
     fontSize: 26, fontWeight: '800', color: Colors.foreground,
@@ -458,7 +457,7 @@ const styles = StyleSheet.create({
   // Score bento
   scoreBento: {
     backgroundColor: '#ffffff', borderRadius: 24, padding: 16,
-    flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16,
+    flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16, marginHorizontal: 20,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
     borderLeftWidth: 4, borderLeftColor: Colors.primary,
@@ -491,7 +490,7 @@ const styles = StyleSheet.create({
   shareBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     backgroundColor: 'transparent', borderRadius: 12, paddingVertical: 14,
-    marginTop: 8, marginBottom: 8,
+    marginTop: 8, marginBottom: 8, marginHorizontal: 20,
     borderWidth: 1, borderColor: Colors.outlineVariant,
   },
   shareBtnText: {
@@ -499,7 +498,7 @@ const styles = StyleSheet.create({
   },
 
   // Sections
-  section: { marginBottom: 24 },
+  section: { marginBottom: 24, paddingHorizontal: 20 },
   sectionTitle: {
     fontFamily: Typography.families.display,
     fontSize: 20, fontWeight: '800', color: Colors.foreground,
@@ -571,7 +570,7 @@ const styles = StyleSheet.create({
   // Empty state upload CTA
   uploadCTA: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: Colors.primary10, borderRadius: 18, padding: 18,
+    backgroundColor: Colors.primary10, borderRadius: 18, padding: 18, marginHorizontal: 20,
     borderWidth: 1, borderColor: Colors.primary + '30',
   },
   uploadCTAText: {
