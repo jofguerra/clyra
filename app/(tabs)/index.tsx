@@ -451,15 +451,18 @@ const styles = StyleSheet.create({
   },
   heroLottie: { width: '100%', height: '115%', marginTop: '-3%' },
 
-  // Sky-colored arc that curves DOWN over the white content
+  // Sky-colored semicircle that arcs down over white
   curveWrapper: {
     backgroundColor: Colors.background,
+    alignItems: 'center',
+    marginTop: -2,
   },
   curveShape: {
-    height: 40,
+    width: '120%',
+    aspectRatio: 4,
     backgroundColor: '#D6EAF8',
-    borderBottomLeftRadius: 600,
-    borderBottomRightRadius: 600,
+    borderBottomLeftRadius: 9999,
+    borderBottomRightRadius: 9999,
   },
 
   // Content below curve — white
