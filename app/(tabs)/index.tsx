@@ -97,6 +97,9 @@ function MarkerRow({ biomarker, language, t, onPress }: {
       <View style={styles.markerInfo}>
         <Text style={styles.markerName}>{displayName}</Text>
         <Text style={styles.markerOriginal}>{biomarker.name}</Text>
+        {biomarker.referenceRange ? (
+          <Text style={styles.markerRef}>Ref: {biomarker.referenceRange} {biomarker.unit}</Text>
+        ) : null}
       </View>
       <View style={styles.markerRight}>
         <Text style={[styles.markerValue, { color }]}>{translateBiomarkerValue(biomarker.value, language)} {biomarker.unit}</Text>
@@ -124,7 +127,7 @@ export default function DashboardScreen() {
   const testReminderDays = useStore(s => s.testReminderDays);
   const hasBiomarkers = biomarkers.length > 0;
 
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   // Days since last test
   const daysSinceLastTest = useMemo(() => {
@@ -178,14 +181,14 @@ export default function DashboardScreen() {
   const outOfRange = biomarkers.filter(b => b.status !== 'normal');
   const criticalMarkers = outOfRange.filter(b => b.status === 'high' || b.status === 'low');
 
-  // Category filter chips
+  // Category filter tabs
   const systemsWithData = BODY_SYSTEMS.filter(sys => getSystemBiomarkers(sys, biomarkers).length > 0);
-  const filterChips = [
-    { id: 'all', label: t('filterAll'), emoji: '📋' },
-    ...systemsWithData.map(sys => ({ id: sys.id, label: sys.shortName[language], emoji: sys.emoji })),
+  const filterTabs = [
+    { id: null as string | null, label: t('filterAll'), emoji: '📋' },
+    ...systemsWithData.map(sys => ({ id: sys.id as string | null, label: sys.shortName[language], emoji: sys.emoji })),
   ];
 
-  const filteredBiomarkers = activeFilter === 'all'
+  const filteredBiomarkers = activeFilter === null
     ? [...biomarkers].sort((a, b) => {
         const rank = { high: 0, low: 0, borderline: 1, normal: 2 };
         return (rank[a.status as keyof typeof rank] ?? 2) - (rank[b.status as keyof typeof rank] ?? 2);
@@ -194,6 +197,14 @@ export default function DashboardScreen() {
         const sys = BODY_SYSTEMS.find(s => s.id === activeFilter);
         return sys ? getSystemBiomarkers(sys, biomarkers) : [];
       })();
+
+  // Sync BodyMap selection → tab filter
+  const handleBodyMapSelect = useCallback((systemId: string | null) => {
+    setActiveFilter(systemId);
+  }, []);
+
+  // Sync tab filter → BodyMap (pass activeFilter as selectedSystemId)
+  const bodyMapSystemId = activeFilter;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -247,31 +258,38 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {/* ── 2. Body Map / Your Biomarkers ── */}
+            {/* ── 2. Body Map ── */}
             <View style={[styles.section, { alignItems: 'center' }]}>
               <Text style={[styles.sectionTitle, { alignSelf: 'flex-start' }]}>{t('yourBody')}</Text>
               <Text style={[styles.sectionSub, { alignSelf: 'flex-start' }]}>{t('bodyMapSubtitle')}</Text>
-              <BodyMap biomarkers={biomarkers} />
+              <BodyMap
+                biomarkers={biomarkers}
+                selectedSystemId={bodyMapSystemId}
+                onSelectSystem={handleBodyMapSelect}
+              />
             </View>
 
-            {/* ── 3. All Markers with category filter ── */}
+            {/* ── 3. Unified Markers list with tab-style filter ── */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>{t('allMarkersTitle')}</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
-                <View style={styles.filterRow}>
-                  {filterChips.map(chip => (
-                    <TouchableOpacity
-                      key={chip.id}
-                      style={[styles.filterChip, activeFilter === chip.id && styles.filterChipActive]}
-                      onPress={() => setActiveFilter(chip.id)}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={styles.filterChipEmoji}>{chip.emoji}</Text>
-                      <Text style={[styles.filterChipText, activeFilter === chip.id && styles.filterChipTextActive]}>
-                        {chip.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScroll}>
+                <View style={styles.tabRow}>
+                  {filterTabs.map(tab => {
+                    const isActive = activeFilter === tab.id;
+                    return (
+                      <TouchableOpacity
+                        key={tab.id ?? 'all'}
+                        style={[styles.tab, isActive && styles.tabActive]}
+                        onPress={() => setActiveFilter(tab.id)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={styles.tabEmoji}>{tab.emoji}</Text>
+                        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                          {tab.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </ScrollView>
               <View style={styles.markerList}>
@@ -344,7 +362,7 @@ export default function DashboardScreen() {
             <View style={[styles.section, { alignItems: 'center' }]}>
               <Text style={[styles.sectionTitle, { alignSelf: 'flex-start' }]}>{t('yourBody')}</Text>
               <Text style={[styles.sectionSub, { alignSelf: 'flex-start' }]}>{t('bodyMapSubtitle')}</Text>
-              <BodyMap biomarkers={biomarkers} />
+              <BodyMap biomarkers={[]} />
             </View>
             <TouchableOpacity style={styles.uploadCTA}
               onPress={() => router.push('/(tabs)/upload' as any)} activeOpacity={0.85}>
@@ -432,20 +450,25 @@ const styles = StyleSheet.create({
     fontSize: 13, color: Colors.mutedForeground, marginBottom: 12,
   },
 
-  // Filter chips
-  filterScroll: { marginBottom: 12 },
-  filterRow: { flexDirection: 'row', gap: 8, paddingRight: 8 },
-  filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: Colors.surfaceLow, paddingHorizontal: 12, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1, borderColor: Colors.border,
+  // Tab-style filters
+  tabScroll: { marginBottom: 16 },
+  tabRow: {
+    flexDirection: 'row', gap: 0,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  filterChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  filterChipEmoji: { fontSize: 13 },
-  filterChipText: {
-    fontFamily: Typography.families.body, fontSize: 12, fontWeight: '600', color: Colors.mutedForeground,
+  tab: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  filterChipTextActive: { color: 'white' },
+  tabActive: {
+    borderBottomColor: Colors.primary,
+  },
+  tabEmoji: { fontSize: 13 },
+  tabText: {
+    fontFamily: Typography.families.body, fontSize: 13, fontWeight: '600', color: Colors.mutedForeground,
+  },
+  tabTextActive: { color: Colors.primary, fontWeight: '700' },
 
   // Markers
   markerList: { gap: 8 },
@@ -459,6 +482,7 @@ const styles = StyleSheet.create({
   markerInfo: { flex: 1 },
   markerName: { fontFamily: Typography.families.body, fontSize: 14, fontWeight: '700', color: Colors.foreground },
   markerOriginal: { fontFamily: Typography.families.body, fontSize: 10, color: Colors.outline, marginTop: 1 },
+  markerRef: { fontFamily: Typography.families.body, fontSize: 10, color: Colors.outline, marginTop: 1 },
   markerRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   markerValue: { fontFamily: Typography.families.body, fontSize: 13, fontWeight: '700' },
   markerChip: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },

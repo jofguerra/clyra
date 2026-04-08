@@ -3,8 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Easing, Image, useWindowDimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
-import { FlaskConical, ChevronRight } from 'lucide-react-native';
+import { FlaskConical } from 'lucide-react-native';
 import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
 import {
@@ -14,7 +13,6 @@ import {
 import { Biomarker } from '../services/openai';
 import { useStore } from '../hooks/useStore';
 import { useT } from '../hooks/useT';
-import { getBiomarkerKnowledge } from '../constants/biomarkerKnowledge';
 
 // ─── Image dimensions (484 × 970) — body-map2.png ────────────────────────────
 const IMG_W = 484;
@@ -158,50 +156,6 @@ function SideLabel({ system, status, selected, yPct, imgH, side, topOverride, on
   );
 }
 
-// ─── Biomarker pill ───────────────────────────────────────────────────────────
-
-function BiomarkerPill({ biomarker, language, onPress }: {
-  biomarker: Biomarker; language: string; onPress: () => void;
-}) {
-  const t = useT();
-  const knowledge = getBiomarkerKnowledge(biomarker.name);
-  const displayName = knowledge?.simpleName?.[language as 'en' | 'es'] ?? biomarker.name;
-  const statusColor = {
-    normal: Colors.optimal, borderline: Colors.borderline,
-    low: Colors.attention, high: Colors.attention,
-  }[biomarker.status] ?? Colors.mutedForeground;
-  const statusBg = {
-    normal: Colors.optimal10, borderline: Colors.borderline10,
-    low: Colors.attention10, high: Colors.attention10,
-  }[biomarker.status] ?? Colors.surfaceLow;
-  const statusLabel = {
-    normal: t('statusNormal'), borderline: t('statusBorderline'),
-    low: t('statusLow'), high: t('statusHigh'),
-  }[biomarker.status] ?? '';
-
-  return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={onPress}
-      style={[styles.pill, { backgroundColor: statusBg, borderColor: statusColor + '40' }]}
-    >
-      <View style={styles.pillLeft}>
-        <Text style={styles.pillName}>{displayName}</Text>
-        <Text style={styles.pillOriginal}>{biomarker.name}</Text>
-        {biomarker.referenceRange
-          ? <Text style={styles.pillRef}>Ref: {biomarker.referenceRange} {biomarker.unit}</Text>
-          : null}
-      </View>
-      <View style={styles.pillRight}>
-        <Text style={[styles.pillValue, { color: statusColor }]}>{biomarker.value} {biomarker.unit}</Text>
-        <View style={[styles.pillChip, { backgroundColor: statusColor }]}>
-          <Text style={styles.pillChipText}>{statusLabel}</Text>
-        </View>
-        <ChevronRight size={13} color={Colors.outline} />
-      </View>
-    </TouchableOpacity>
-  );
-}
 
 // ─── Required test row ────────────────────────────────────────────────────────
 
@@ -228,12 +182,17 @@ function RequiredTestRow({ name, description, sampleType }: { name: string; desc
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
-  const router = useRouter();
+export default function BodyMap({ biomarkers, selectedSystemId, onSelectSystem }: {
+  biomarkers: Biomarker[];
+  selectedSystemId?: string | null;
+  onSelectSystem?: (id: string | null) => void;
+}) {
   const t = useT();
   const language = useStore(s => s.language) as 'en' | 'es';
   const { width: screenWidth } = useWindowDimensions();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Use external selected state if provided, otherwise internal
+  const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null);
+  const selectedId = selectedSystemId !== undefined ? selectedSystemId : internalSelectedId;
 
   const STATUS_LABEL: Record<SystemStatus, string> = {
     normal:     t('legendNormal'),
@@ -259,12 +218,14 @@ export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
     rightSystems.map(s => ({ id: s.id, rawTop: ((SYSTEM_HOTSPOTS[s.id]?.yPct ?? 0) / 100) * imgDisplayH - 14 }))
   );
 
-  const selectedSystem = BODY_SYSTEMS.find(s => s.id === selectedId) ?? null;
-  const selectedBiomarkers = selectedSystem ? getSystemBiomarkers(selectedSystem, biomarkers) : [];
-  const selectedStatus = selectedSystem ? getSystemStatus(selectedSystem, biomarkers) : 'none';
-  const selectedColor = STATUS_COLOR[selectedStatus];
-
-  const handleSelect = (id: string) => setSelectedId(prev => prev === id ? null : id);
+  const handleSelect = (id: string) => {
+    const newId = selectedId === id ? null : id;
+    if (onSelectSystem) {
+      onSelectSystem(newId);
+    } else {
+      setInternalSelectedId(newId);
+    }
+  };
 
   return (
     <View style={styles.wrapper}>
@@ -345,54 +306,42 @@ export default function BodyMap({ biomarkers }: { biomarkers: Biomarker[] }) {
         ))}
       </View>
 
-      {!selectedSystem && (
-        <Text style={styles.tapHint}>
-          {biomarkers.length > 0 ? t('tapToSeeMarkers') : t('tapToSeeTests')}
-        </Text>
+      {biomarkers.length === 0 && (
+        <Text style={styles.tapHint}>{t('tapToSeeTests')}</Text>
       )}
 
-      {/* Detail panel */}
-      {selectedSystem && (
-        <View style={[styles.panel, { borderColor: selectedColor + '30' }]}>
-          <View style={styles.panelHeader}>
-            <Text style={styles.panelEmoji}>{selectedSystem.emoji}</Text>
-            <Text style={styles.panelTitle}>{selectedSystem.name[language]}</Text>
-            <View style={[styles.statusChip, { backgroundColor: selectedColor + '20' }]}>
-              <Text style={[styles.statusChipText, { color: selectedColor }]}>
-                {STATUS_LABEL[selectedStatus]}
-              </Text>
+      {/* No-data panel: show required tests when a system has no biomarkers */}
+      {selectedId && (() => {
+        const sys = BODY_SYSTEMS.find(s => s.id === selectedId);
+        if (!sys) return null;
+        const sysBiomarkers = getSystemBiomarkers(sys, biomarkers);
+        if (sysBiomarkers.length > 0) return null; // markers shown in unified list below
+        const status = getSystemStatus(sys, biomarkers);
+        const color = STATUS_COLOR[status];
+        return (
+          <View style={[styles.panel, { borderColor: color + '30' }]}>
+            <View style={styles.panelHeader}>
+              <Text style={styles.panelEmoji}>{sys.emoji}</Text>
+              <Text style={styles.panelTitle}>{sys.name[language]}</Text>
+              <View style={[styles.statusChip, { backgroundColor: color + '20' }]}>
+                <Text style={[styles.statusChipText, { color }]}>{STATUS_LABEL[status]}</Text>
+              </View>
             </View>
-          </View>
-
-          {selectedBiomarkers.length > 0 ? (
-            <View style={styles.pillList}>
-              {selectedBiomarkers.map(b => (
-                <BiomarkerPill
-                  key={b.name}
-                  biomarker={b}
-                  language={language}
-                  onPress={() => router.push(`/biomarker/${encodeURIComponent(b.name)}`)}
+            <Text style={styles.noDataTitle}>{t('noDataForSystem')}</Text>
+            <Text style={styles.noDataSub}>{t('askForTests')}</Text>
+            <View style={styles.testList}>
+              {sys.requiredTests.map(req => (
+                <RequiredTestRow
+                  key={req.name[language]}
+                  name={req.name[language]}
+                  description={req.description[language]}
+                  sampleType={req.sampleType}
                 />
               ))}
             </View>
-          ) : (
-            <>
-              <Text style={styles.noDataTitle}>{t('noDataForSystem')}</Text>
-              <Text style={styles.noDataSub}>{t('askForTests')}</Text>
-              <View style={styles.testList}>
-                {selectedSystem.requiredTests.map(req => (
-                  <RequiredTestRow
-                    key={req.name[language]}
-                    name={req.name[language]}
-                    description={req.description[language]}
-                    sampleType={req.sampleType}
-                  />
-                ))}
-              </View>
-            </>
-          )}
-        </View>
-      )}
+          </View>
+        );
+      })()}
     </View>
   );
 }
@@ -501,38 +450,6 @@ const styles = StyleSheet.create({
   statusChipText: {
     fontFamily: Typography.families.body,
     fontSize: 11, fontWeight: '700',
-  },
-
-  // Biomarker pills
-  pillList: { gap: 8 },
-  pill: {
-    flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: 12, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 10,
-  },
-  pillLeft: { flex: 1, gap: 1 },
-  pillName: {
-    fontFamily: Typography.families.body,
-    fontSize: 13, fontWeight: '700', color: Colors.foreground,
-  },
-  pillOriginal: {
-    fontFamily: Typography.families.body,
-    fontSize: 10, color: Colors.outline,
-  },
-  pillRef: {
-    fontFamily: Typography.families.body,
-    fontSize: 10, color: Colors.outline,
-  },
-  pillRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  pillValue: {
-    fontFamily: Typography.families.body,
-    fontSize: 13, fontWeight: '700',
-  },
-  pillChip: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  pillChipText: {
-    fontFamily: Typography.families.body,
-    fontSize: 9, fontWeight: '700', color: 'white',
   },
 
   // No data
