@@ -257,7 +257,12 @@ export default function DashboardScreen() {
           </View>
         </AnimatedSection>
 
-        {/* ── Content area with white background + curved top ── */}
+        {/* ── Downward curve overlay ── */}
+        <View style={styles.curveWrapper}>
+          <View style={styles.curveShape} />
+        </View>
+
+        {/* ── Content area with white background ── */}
         <View style={styles.contentArea}>
 
         {/* ── 1. Welcome ── */}
@@ -446,11 +451,23 @@ const styles = StyleSheet.create({
   },
   heroLottie: { width: '100%', height: '115%', marginTop: '-3%' },
 
-  // Content below hero — white bg with big curved semicircle top
+  // Downward curve — sky-colored shape with rounded bottom that
+  // sits between hero and content, making the white "bow down"
+  curveWrapper: {
+    backgroundColor: Colors.background,
+    overflow: 'hidden',
+    marginTop: -2,
+  },
+  curveShape: {
+    height: 44,
+    backgroundColor: '#D6EAF8',
+    borderTopLeftRadius: 600,
+    borderTopRightRadius: 600,
+  },
+
+  // Content below curve — white
   contentArea: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 40, borderTopRightRadius: 40,
-    marginTop: -36,
     minHeight: 600,
   },
 
