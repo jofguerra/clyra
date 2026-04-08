@@ -254,12 +254,10 @@ export default function DashboardScreen() {
               style={styles.heroLottie}
               resizeMode="cover"
             />
-            {/* Curved semicircle bottom edge */}
-            <View style={styles.heroCurve} />
           </View>
         </AnimatedSection>
 
-        {/* ── Content area with white background ── */}
+        {/* ── Content area with white background + curved top ── */}
         <View style={styles.contentArea}>
 
         {/* ── 1. Welcome ── */}
@@ -444,19 +442,15 @@ const styles = StyleSheet.create({
   // Hero Lottie — full bleed to top edge
   heroSection: { alignItems: 'center' },
   heroContainer: {
-    width: '100%', aspectRatio: 1123 / 780, overflow: 'visible',
+    width: '100%', aspectRatio: 1123 / 780,
   },
   heroLottie: { width: '100%', height: '115%', marginTop: '-3%' },
-  heroCurve: {
-    position: 'absolute', bottom: -28, left: 0, right: 0, height: 32,
-    backgroundColor: Colors.background,
-    borderTopLeftRadius: 600, borderTopRightRadius: 600,
-  },
 
-  // Content below hero — white bg
+  // Content below hero — white bg with curved top
   contentArea: {
     backgroundColor: Colors.background,
-    borderTopLeftRadius: 0, borderTopRightRadius: 0,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    marginTop: -24,
     minHeight: 600,
   },
 
