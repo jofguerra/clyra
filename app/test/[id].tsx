@@ -128,9 +128,9 @@ export default function TestDetailScreen() {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     });
 
-  const sc = session.healthScore >= 80 ? Colors.optimal
-    : session.healthScore >= 50 ? Colors.borderline
-    : Colors.attention;
+  const totalMarkers = session.biomarkers.length;
+  const outOfRange = session.biomarkers.filter(b => b.status !== 'normal').length;
+  const inRange = totalMarkers - outOfRange;
 
   const handleEditValue = (bioName: string, newValue: string) => {
     setLocalBiomarkers(prev =>
@@ -166,7 +166,8 @@ export default function TestDetailScreen() {
     );
   };
 
-  const attentionList = localBiomarkers.filter(b => b.status !== 'normal');
+  const criticalList = localBiomarkers.filter(b => b.status === 'high' || b.status === 'low');
+  const borderlineList = localBiomarkers.filter(b => b.status === 'borderline');
   const normalList = localBiomarkers.filter(b => b.status === 'normal');
 
   return (
@@ -187,17 +188,32 @@ export default function TestDetailScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Score hero */}
-        <View style={[styles.scoreCard, { borderLeftColor: sc }]}>
-          <View>
+        {/* Test summary card */}
+        <View style={[styles.scoreCard, { borderLeftColor: outOfRange > 0 ? Colors.borderline : Colors.optimal }]}>
+          <View style={{ flex: 1 }}>
             <Text style={styles.scoreDate}>{formatDate(session.date)}</Text>
             {session.fileName && (
               <Text style={styles.scoreFile}>{session.fileName}</Text>
             )}
-          </View>
-          <View style={[styles.scoreBubble, { backgroundColor: sc + '15' }]}>
-            <Text style={[styles.scoreNum, { color: sc }]}>{session.healthScore}</Text>
-            <Text style={styles.scoreLabel}>Score</Text>
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryText}>
+                {totalMarkers} {language === 'es' ? 'biomarcadores' : 'biomarkers'}
+              </Text>
+              {inRange > 0 && (
+                <View style={[styles.summaryChip, { backgroundColor: Colors.optimal10 }]}>
+                  <Text style={[styles.summaryChipText, { color: Colors.optimal }]}>
+                    {inRange} {language === 'es' ? 'en rango' : 'in range'}
+                  </Text>
+                </View>
+              )}
+              {outOfRange > 0 && (
+                <View style={[styles.summaryChip, { backgroundColor: Colors.attention10 }]}>
+                  <Text style={[styles.summaryChipText, { color: Colors.attention }]}>
+                    {outOfRange} {language === 'es' ? 'fuera' : 'out'}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
@@ -213,13 +229,31 @@ export default function TestDetailScreen() {
           </View>
         )}
 
-        {/* Out of range */}
-        {attentionList.length > 0 && (
+        {/* Out of range (high/low) */}
+        {criticalList.length > 0 && (
           <>
             <Text style={styles.sectionTitle}>
               {language === 'es' ? '⚠️ Fuera de Rango' : '⚠️ Out of Range'}
             </Text>
-            {attentionList.map(b => (
+            {criticalList.map(b => (
+              <BiomarkerRow
+                key={b.name}
+                biomarker={localBiomarkers.find(lb => lb.name === b.name) ?? b}
+                editing={editMode}
+                onEdit={(val) => handleEditValue(b.name, val)}
+                lang={language}
+              />
+            ))}
+          </>
+        )}
+
+        {/* Borderline */}
+        {borderlineList.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { marginTop: criticalList.length > 0 ? 20 : 0 }]}>
+              {language === 'es' ? '🔶 Casi en el Límite' : '🔶 Borderline'}
+            </Text>
+            {borderlineList.map(b => (
               <BiomarkerRow
                 key={b.name}
                 biomarker={localBiomarkers.find(lb => lb.name === b.name) ?? b}
@@ -234,7 +268,7 @@ export default function TestDetailScreen() {
         {/* Normal */}
         {normalList.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { marginTop: attentionList.length > 0 ? 20 : 0 }]}>
+            <Text style={[styles.sectionTitle, { marginTop: (criticalList.length > 0 || borderlineList.length > 0) ? 20 : 0 }]}>
               {language === 'es' ? '✅ En Rango Normal' : '✅ In Normal Range'}
             </Text>
             {normalList.map(b => (
@@ -313,18 +347,19 @@ const styles = StyleSheet.create({
     fontFamily: Typography.families.body,
     fontSize: 12, color: Colors.mutedForeground,
   },
-  scoreBubble: {
-    width: 64, height: 64, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
+  summaryRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap',
   },
-  scoreNum: {
-    fontFamily: Typography.families.display,
-    fontSize: 26, fontWeight: '900',
-  },
-  scoreLabel: {
+  summaryText: {
     fontFamily: Typography.families.body,
-    fontSize: 9, color: Colors.outline, fontWeight: '700',
-    textTransform: 'uppercase', letterSpacing: 1,
+    fontSize: 13, fontWeight: '600', color: Colors.mutedForeground,
+  },
+  summaryChip: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  summaryChipText: {
+    fontFamily: Typography.families.body,
+    fontSize: 11, fontWeight: '700',
   },
 
   editBanner: {

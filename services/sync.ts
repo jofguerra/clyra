@@ -15,7 +15,17 @@ export interface DbProfile {
   xp: number;
   active_weeks: number;
   last_active_date: string | null;
-  completed_missions: string[];
+}
+
+export type MissionType = 'daily' | 'priority' | 'weekly';
+
+export interface DbMissionEvent {
+  id: string;
+  user_id: string;
+  mission_id: string;
+  mission_type: MissionType;
+  xp_earned: number;
+  completed_at: string;
 }
 
 export interface DbExamSession {
@@ -146,10 +156,14 @@ export async function createSession(
 }
 
 export async function deleteSession(sessionId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+
   const { error } = await supabase
     .from('exam_sessions')
     .delete()
-    .eq('id', sessionId);
+    .eq('id', sessionId)
+    .eq('user_id', user.id);
 
   if (error) throw error;
 }
@@ -203,6 +217,78 @@ export async function insertBiomarkers(
     .insert(rows);
 
   if (error) throw error;
+}
+
+// ─── Mission events (daily / priority / weekly) ────────────────────────────
+
+/**
+ * Atomically record a mission completion on the server.
+ * Inserts a row in mission_events and increments profiles.xp.
+ * Returns the new running XP total (or null if offline / unauthenticated).
+ */
+export async function recordMissionEvent(
+  missionId: string,
+  missionType: MissionType,
+  xp: number,
+): Promise<{ eventId: string; newXp: number } | null> {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase.rpc('record_mission_event', {
+    p_mission_id: missionId,
+    p_mission_type: missionType,
+    p_xp: xp,
+  });
+
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return { eventId: row.event_id, newXp: row.new_xp };
+}
+
+/** Mission IDs completed by the current user since local midnight. */
+export async function getTodayMissionIds(): Promise<string[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+
+  // Local midnight as ISO — server stores timestamptz so comparison is UTC-safe.
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('mission_events')
+    .select('mission_id')
+    .eq('user_id', user.id)
+    .gte('completed_at', startOfDay.toISOString());
+
+  if (error) throw error;
+  return (data ?? []).map((r) => r.mission_id);
+}
+
+/**
+ * Count mission events of a given type in the current ISO week
+ * (Monday 00:00 local → now). Used for weekly challenge progress.
+ */
+export async function getWeeklyMissionCount(type: MissionType): Promise<number> {
+  const user = await getCurrentUser();
+  if (!user) return 0;
+
+  const now = new Date();
+  const day = now.getDay(); // 0 Sun … 6 Sat
+  const daysSinceMonday = (day + 6) % 7;
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - daysSinceMonday);
+  startOfWeek.setHours(0, 0, 0, 0);
+
+  const { count, error } = await supabase
+    .from('mission_events')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('mission_type', type)
+    .gte('completed_at', startOfWeek.toISOString());
+
+  if (error) throw error;
+  return count ?? 0;
 }
 
 // ─── Achievements ───────────────────────────────────────────────────────────
@@ -266,7 +352,6 @@ export async function pushLocalToCloud(localState: {
   xp: number;
   activeWeeks: number;
   lastActiveDate: string | null;
-  completedMissions: string[];
   sessions: Array<{
     id: string;
     date: string;
@@ -281,7 +366,8 @@ export async function pushLocalToCloud(localState: {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  // 1. Update profile
+  // 1. Update profile (mission events are recorded individually via
+  //    recordMissionEvent — no array to sync here).
   await updateProfile({
     display_name: localState.userName,
     age: localState.age,
@@ -293,7 +379,6 @@ export async function pushLocalToCloud(localState: {
     xp: localState.xp,
     active_weeks: localState.activeWeeks,
     last_active_date: localState.lastActiveDate,
-    completed_missions: localState.completedMissions,
   });
 
   // 2. Upload sessions + biomarkers (skip if already exists by file_hash)
@@ -329,11 +414,12 @@ export async function pullCloudToLocal() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const [profile, sessions, achievements, subscription] = await Promise.all([
+  const [profile, sessions, achievements, subscription, todayMissions] = await Promise.all([
     getProfile(),
     getSessions(),
     getAchievements(),
     getSubscription(),
+    getTodayMissionIds(),
   ]);
 
   if (!profile) return null;
@@ -371,7 +457,8 @@ export async function pullCloudToLocal() {
     xp: profile.xp,
     activeWeeks: profile.active_weeks,
     lastActiveDate: profile.last_active_date,
-    completedMissions: profile.completed_missions,
+    // Today's completed mission IDs (resets at local midnight via date filter)
+    todayCompletedMissions: todayMissions,
     sessions: sessionsWithBiomarkers,
     achievements,
     isPro: !!subscription,

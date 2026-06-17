@@ -4,6 +4,8 @@ import { Colors } from '../constants/colors';
 import { supabase } from '../services/supabase';
 import { useStore } from '../hooks/useStore';
 import { useSyncEffect } from '../hooks/useSync';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { AchievementUnlockModal } from '../components/AchievementUnlockModal';
 
 export default function RootLayout() {
     useSyncEffect();
@@ -52,12 +54,16 @@ export default function RootLayout() {
     }, [authUserId, hasCompletedOnboarding, segments, router]);
 
     return (
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="biomarker/[name]" options={{ presentation: 'card' }} />
-            <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="+not-found" />
-        </Stack>
+        <ErrorBoundary>
+            <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
+                <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="biomarker/[name]" options={{ presentation: 'card' }} />
+                <Stack.Screen name="subscription" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="+not-found" />
+            </Stack>
+            {/* Global achievement celebration — appears on any screen after new unlock */}
+            <AchievementUnlockModal />
+        </ErrorBoundary>
     );
 }

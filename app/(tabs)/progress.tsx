@@ -1,18 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share,
+  Dimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutAnimation, Image,
 } from 'react-native';
-import Svg, { Circle, Polyline, Line } from 'react-native-svg';
+import Svg, { Circle, Polyline, Line, Polygon } from 'react-native-svg';
 import {
   TrendingUp, TrendingDown, Minus,
-  ChevronRight, ArrowUp, ArrowDown, Stethoscope, Share2,
+  ChevronRight, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Stethoscope, Share2,
   CheckCheck, Droplets, Flame, Heart,
   Trophy, Pencil, Check, Plus,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import AppHeader from '../../components/AppHeader';
-import AchievementBadge from '../../components/AchievementBadge';
 import XPBar from '../../components/ui/XPBar';
+import Mascot from '../../components/Mascot';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { useStore, HealthGoal } from '../../hooks/useStore';
@@ -20,8 +20,12 @@ import { useT } from '../../hooks/useT';
 import { Biomarker } from '../../services/openai';
 import { getBiomarkerKnowledge } from '../../constants/biomarkerKnowledge';
 import { generateDoctorQuestions, simulateImprovement } from '../../constants/healthMetrics';
+import { parseBiomarkerNumber } from '../../constants/valueParsing';
 import { ACHIEVEMENTS, getScoreLevel } from '../../constants/gamification';
 import { GOALS } from '../../constants/healthGoals';
+
+const { width: SCREEN_W } = Dimensions.get('window');
+const CARD_W = SCREEN_W - 40; // full width minus padding
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,6 +47,53 @@ function formatShort(iso: string, lang: string) {
   });
 }
 
+// ─── Page Indicator Dots ─────────────────────────────────────────────────────
+
+function PageDots({ count, active }: { count: number; active: number }) {
+  return (
+    <View style={styles.dotsRow}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.dot,
+            i === active && styles.dotActive,
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Horizontal paged ScrollView wrapper ─────────────────────────────────────
+
+function PagedCards({ children, cardCount }: { children: React.ReactNode; cardCount: number }) {
+  const [activePage, setActivePage] = useState(0);
+
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / CARD_W);
+    setActivePage(Math.max(0, Math.min(page, cardCount - 1)));
+  }, [cardCount]);
+
+  return (
+    <View>
+      <ScrollView
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={CARD_W + 12}
+        decelerationRate="fast"
+        contentContainerStyle={{ gap: 12 }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+      >
+        {children}
+      </ScrollView>
+      {cardCount > 1 && <PageDots count={cardCount} active={activePage} />}
+    </View>
+  );
+}
+
 // ─── Score history graph (SVG) ────────────────────────────────────────────────
 
 function ScoreGraph({ sessions, language, t }: {
@@ -50,6 +101,47 @@ function ScoreGraph({ sessions, language, t }: {
   language: string;
   t: ReturnType<typeof useT>;
 }) {
+  // ─── With only 1 exam, show a friendly "trends unlock soon" card ─────────
+  // A real line chart with a single dot + projection looks broken.
+  if (sessions.length < 2) {
+    const latest = sessions[0];
+    const score = latest.healthScore;
+    return (
+      <View style={[styles.graphCard, { alignItems: 'center', paddingVertical: 24 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+          <View style={{
+            width: 56, height: 56, borderRadius: 28,
+            backgroundColor: scoreColor(score) + '18',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Text style={{
+              fontFamily: Typography.families.display,
+              fontSize: 22, fontWeight: '900', color: scoreColor(score),
+            }}>{score}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.graphTitle}>
+              {language === 'es' ? 'Tu primer puntaje' : 'Your first score'}
+            </Text>
+            <Text style={{
+              fontFamily: Typography.families.body,
+              fontSize: 12, color: Colors.mutedForeground, marginTop: 2,
+            }}>
+              {formatDate(latest.date, language)}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.nextTestBanner}>
+          <Text style={styles.nextTestText}>
+            {language === 'es'
+              ? '📈 Sube otro examen para ver tendencias'
+              : '📈 Upload another exam to see trends'}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
   const W = 320, H = 110;
   const PAD = { top: 16, bottom: 28, left: 10, right: 10 };
   const gW = W - PAD.left - PAD.right;
@@ -159,6 +251,149 @@ function ScoreGraph({ sessions, language, t }: {
   );
 }
 
+// ─── Sparkline mini-charts grid ──────────────────────────────────────────────
+
+function getBiomarkerHistory(
+  sessions: { biomarkers: Biomarker[]; date: string }[],
+  biomarkerName: string,
+): { value: number; date: string }[] {
+  const result: { value: number; date: string }[] = [];
+  for (let i = sessions.length - 1; i >= 0; i--) {
+    const s = sessions[i];
+    const match = s.biomarkers.find(
+      (b) => b.name.toLowerCase() === biomarkerName.toLowerCase(),
+    );
+    if (match) {
+      const num = parseBiomarkerNumber(match.value);
+      if (!isNaN(num)) result.push({ value: num, date: s.date });
+    }
+  }
+  return result;
+}
+
+const SPARK_CARD_W = (SCREEN_W - 40 - 8) / 2;
+
+function SparklineCard({ name, history, unit, status, language }: {
+  name: string;
+  history: { value: number; date: string }[];
+  unit: string;
+  status: string;
+  language: string;
+}) {
+  const knowledge = getBiomarkerKnowledge(name);
+  const displayName = knowledge?.simpleName?.[language as 'en' | 'es'] ?? name;
+  const color =
+    status === 'normal' ? Colors.optimal
+    : status === 'borderline' ? Colors.borderline
+    : Colors.attention;
+
+  const W = 140, H = 50;
+  const PAD = 6;
+  const gW = W - PAD * 2;
+  const gH = H - PAD * 2;
+
+  const vals = history.map((h) => h.value);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  const points = history
+    .map((h, i) => {
+      const x = PAD + (history.length > 1 ? (i / (history.length - 1)) * gW : gW / 2);
+      const y = PAD + gH - ((h.value - minV) / range) * gH;
+      return `${x},${y}`;
+    })
+    .join(' ');
+
+  const current = history[history.length - 1];
+
+  return (
+    <View style={styles.sparkCard}>
+      <Text style={styles.sparkName} numberOfLines={1}>{displayName}</Text>
+      {history.length > 1 ? (
+        <Svg width={W} height={H}>
+          <Polyline
+            points={points}
+            fill="none"
+            stroke={color}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          {/* Current value dot */}
+          <Circle
+            cx={PAD + gW}
+            cy={PAD + gH - ((current.value - minV) / range) * gH}
+            r={3}
+            fill={color}
+          />
+        </Svg>
+      ) : (
+        <Svg width={W} height={H}>
+          <Circle cx={W / 2} cy={H / 2} r={3} fill={color} />
+        </Svg>
+      )}
+      <View style={styles.sparkDateRow}>
+        {history.length > 1 && (
+          <>
+            <Text style={styles.sparkDateLabel}>{formatShort(history[0].date, language)}</Text>
+            <Text style={styles.sparkDateLabel}>{formatShort(history[history.length - 1].date, language)}</Text>
+          </>
+        )}
+      </View>
+      <View style={styles.sparkValueRow}>
+        <View style={[styles.sparkDot, { backgroundColor: color }]} />
+        <Text style={[styles.sparkValue, { color }]}>
+          {current.value} {unit}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function SparklineGrid({ sessions, language }: {
+  sessions: { biomarkers: Biomarker[]; date: string }[];
+  language: string;
+}) {
+  // Sparklines only make sense with 2+ data points. With 1, we'd just show
+  // a dot which looks broken. Hide entirely until there's real trend data.
+  if (sessions.length < 2) return null;
+
+  // Collect latest biomarkers with their history count
+  const latest = sessions[0];
+  const candidates = latest.biomarkers
+    .map((b) => {
+      const hist = getBiomarkerHistory(sessions, b.name);
+      const priority =
+        b.status === 'high' || b.status === 'low' ? 3
+        : b.status === 'borderline' ? 2
+        : 1;
+      return { b, hist, priority };
+    })
+    // Only keep biomarkers that have at least 2 data points — real trends
+    .filter((c) => c.hist.length >= 2);
+
+  candidates.sort((a, c) => c.priority - a.priority || c.hist.length - a.hist.length);
+
+  const top4 = candidates.slice(0, 4);
+  if (top4.length === 0) return null;
+
+  return (
+    <View style={styles.sparkGrid}>
+      {top4.map((c) => (
+        <SparklineCard
+          key={c.b.name}
+          name={c.b.name}
+          history={c.hist}
+          unit={c.b.unit}
+          status={c.b.status}
+          language={language}
+        />
+      ))}
+    </View>
+  );
+}
+
 // ─── Trend delta between two sessions ────────────────────────────────────────
 
 interface BiomarkerDelta {
@@ -228,7 +463,7 @@ function TrendRow({ delta, lang, onPress }: {
   );
 }
 
-// ─── Doctor Question Card ─────────────────────────────────────────────────────
+// ─── Doctor Question Card (full-width paged) ─────────────────────────────────
 
 const DOCTOR_ICONS: Record<string, any> = {
   glucose: Droplets,
@@ -262,7 +497,7 @@ function DoctorQuestionCard({ question, marker, lang }: {
   };
 
   return (
-    <View style={styles.doctorCard}>
+    <View style={[styles.doctorCard, { width: CARD_W }]}>
       <View style={styles.doctorCardHeader}>
         <View style={styles.doctorIconWrap}>
           <Icon size={16} color={Colors.primary} />
@@ -308,6 +543,140 @@ function MiniRing({ score, size = 80 }: { score: number; size?: number }) {
       <Text style={{ fontSize: 18, fontWeight: '900', color: Colors.foreground, fontFamily: Typography.families.display }}>
         {score}
       </Text>
+    </View>
+  );
+}
+
+// ─── Hexagonal Badge Frame ───────────────────────────────────────────────────
+
+const HEX_SIZE = 72;
+const HEX_IMG = 52;
+
+function hexPoints(size: number): string {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 1;
+  return Array.from({ length: 6 })
+    .map((_, i) => {
+      const angle = (Math.PI / 3) * i - Math.PI / 6; // flat-top hex
+      return `${cx + r * Math.cos(angle)},${cy + r * Math.sin(angle)}`;
+    })
+    .join(' ');
+}
+
+function HexBadge({ image, emoji, unlocked }: {
+  image?: any; emoji: string; unlocked: boolean;
+}) {
+  const borderColor = unlocked ? Colors.primary : Colors.outlineVariant;
+  const fillColor = unlocked ? '#fff' : Colors.surfaceLow;
+
+  return (
+    <View style={[styles.hexContainer, unlocked && styles.hexGlow]}>
+      <Svg width={HEX_SIZE} height={HEX_SIZE} style={styles.hexSvg}>
+        <Polygon
+          points={hexPoints(HEX_SIZE)}
+          fill={fillColor}
+          stroke={borderColor}
+          strokeWidth={2}
+        />
+      </Svg>
+      <View style={[styles.hexContent, !unlocked && { opacity: 0.3 }]}>
+        {image ? (
+          <Image source={image} style={styles.hexImage} resizeMode="contain" />
+        ) : (
+          <Text style={styles.hexEmoji}>{unlocked ? emoji : '🔒'}</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ─── Expandable Hitos/Badges Section ─────────────────────────────────────────
+
+const BADGE_IMAGES: Record<string, any> = {
+  first_exam: require('../../assets/badges/first_exam.png'),
+  trend_unlocked: require('../../assets/badges/trend_unlocked.png'),
+  heart_green: require('../../assets/badges/heart_green.png'),
+  kidneys_green: require('../../assets/badges/kidneys_green.png'),
+  five_improved: require('../../assets/badges/five_improved.png'),
+  full_profile: require('../../assets/badges/full_profile.png'),
+  three_checkups: require('../../assets/badges/three_checkups.png'),
+  bio_age_reduced: require('../../assets/badges/bio_age_reduced.png'),
+  metabolic_reboot: require('../../assets/badges/metabolic_reboot.png'),
+  coverage_50: require('../../assets/badges/coverage_50.png'),
+  coverage_80: require('../../assets/badges/coverage_80.png'),
+  elite_score: require('../../assets/badges/elite_score.png'),
+};
+
+function HitosSection({ achievements, language }: {
+  achievements: string[]; language: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(!expanded);
+  };
+
+  const unlockedAchievements = ACHIEVEMENTS.filter(a => achievements.includes(a.id));
+  const lockedAchievements = ACHIEVEMENTS.filter(a => !achievements.includes(a.id));
+  const allBadges = [...unlockedAchievements, ...lockedAchievements];
+  const displayBadges = expanded ? allBadges : allBadges.slice(0, 4);
+
+  return (
+    <View style={styles.section}>
+      <TouchableOpacity
+        style={styles.achHeader}
+        onPress={toggleExpand}
+        activeOpacity={0.7}
+      >
+        <Trophy size={18} color={Colors.gold} />
+        <Text style={styles.sectionTitle}>{language === 'es' ? 'Hitos' : 'Milestones'}</Text>
+        <Text style={styles.achCount}>
+          {achievements.length}/{ACHIEVEMENTS.length}
+        </Text>
+        {expanded
+          ? <ChevronUp size={18} color={Colors.outline} />
+          : <ChevronDown size={18} color={Colors.outline} />}
+      </TouchableOpacity>
+
+      <View style={styles.badgeGrid}>
+        {displayBadges.map(a => {
+          const unlocked = achievements.includes(a.id);
+          const badgeImage = BADGE_IMAGES[a.id];
+          return (
+            <View key={a.id} style={styles.badgeItem}>
+              <HexBadge
+                image={unlocked ? badgeImage : undefined}
+                emoji={a.icon}
+                unlocked={unlocked}
+              />
+              <Text
+                style={[styles.badgeName, { color: unlocked ? Colors.foreground : Colors.outline }]}
+                numberOfLines={2}
+              >
+                {a.name[language as 'en' | 'es']}
+              </Text>
+              {unlocked && (
+                <Text style={styles.badgeUnlockedLabel}>
+                  {language === 'es' ? '✓ Logrado' : '✓ Unlocked'}
+                </Text>
+              )}
+            </View>
+          );
+        })}
+      </View>
+
+      {!expanded && allBadges.length > 4 && (
+        <TouchableOpacity onPress={toggleExpand} style={styles.showMoreBtn} activeOpacity={0.7}>
+          <Text style={styles.showMoreText}>
+            {language === 'es'
+              ? `Ver todos (${allBadges.length - 4} más)`
+              : `Show all (${allBadges.length - 4} more)`}
+          </Text>
+          <ChevronDown size={14} color={Colors.primary} />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -511,9 +880,8 @@ export default function TrendsScreen() {
   const language = useStore((s) => s.language);
   const userAge = useStore((s) => s.age);
   const achievements = useStore((s) => s.achievements);
-  const xp = useStore((s) => s.xp);
-  const activeWeeks = useStore((s) => s.activeWeeks);
   const healthScore = useStore((s) => s.healthScore);
+  const biomarkers = useStore((s) => s.biomarkers);
   const hasSessions = sessions.length > 0;
 
   const latest = sessions[0];
@@ -523,23 +891,30 @@ export default function TrendsScreen() {
     ? computeDeltas(latest.biomarkers, previous.biomarkers)
     : [];
   const improving = deltas.filter(d => d.improved);
-  const worsening = deltas.filter(d => d.worsened);
 
+  // Overall score delta vs previous session
   const delta = hasSessions && previous
-    ? latest.healthScore - previous.healthScore
+    ? healthScore - previous.healthScore
     : null;
-  const TrendIcon = delta === null ? Minus : delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
-  const trendColor = delta === null ? Colors.outline : delta > 0 ? Colors.optimal : delta < 0 ? Colors.attention : Colors.outline;
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <AppHeader title={t('trendsTitle')} />
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {/* ── Page header (matches reference) ── */}
+        <View style={styles.trendsHeader}>
+          <Text style={styles.trendsTitle}>
+            {language === 'es' ? 'Tendencias \uD83D\uDCC8' : 'Trends \uD83D\uDCC8'}
+          </Text>
+          <Text style={styles.trendsSub}>
+            {language === 'es' ? 'Como esta cambiando tu salud' : 'How your health is changing'}
+          </Text>
+        </View>
 
         {!hasSessions ? (
           <View style={styles.emptyState}>
-            <TrendingUp size={52} color={Colors.primary} style={{ marginBottom: 20 }} />
-            <Text style={styles.emptyTitle}>{t('noDataYet')}</Text>
+            <Mascot pose="thinking" size={140} animation="thinking-tilt" />
+            <Text style={[styles.emptyTitle, { marginTop: 20 }]}>{t('noDataYet')}</Text>
             <Text style={styles.emptySub}>{t('noDataSub')}</Text>
           </View>
         ) : (
@@ -550,46 +925,33 @@ export default function TrendsScreen() {
             {/* ── Score improved celebration banner ── */}
             {delta !== null && delta > 0 && (
               <View style={styles.celebrationBanner}>
-                <Text style={styles.celebrationTitle}>{t('scoreImproved')}</Text>
-                <Text style={styles.celebrationSub}>{t('scoreImprovedBy', { n: delta })}</Text>
-              </View>
-            )}
-
-            {/* ── Current score card ── */}
-            <View style={[styles.scoreCard, { borderLeftColor: scoreColor(latest.healthScore) }]}>
-              <View style={styles.scoreCardLeft}>
-                <Text style={styles.scoreCardLabel}>{t('currentScore').toUpperCase()}</Text>
-                <Text style={[styles.scoreCardValue, { color: Colors.primary }]}>{latest.healthScore}</Text>
-                <View style={styles.trendTag}>
-                  <TrendIcon size={13} color={trendColor} />
-                  <Text style={[styles.trendTagText, { color: trendColor }]}>
-                    {delta !== null
-                      ? `${delta > 0 ? '+' : ''}${delta} ${t('vsLastTest')}`
-                      : t('onlyOneTest')}
+                <Text style={styles.celebrationEmoji}>{'\uD83C\uDF89'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.celebrationTitle}>
+                    {language === 'es' ? '\u00a1Tu puntaje mejoro!' : 'Score improved!'}
+                  </Text>
+                  <Text style={styles.celebrationSub}>
+                    +{delta} {language === 'es' ? 'puntos desde el ultimo examen' : 'points since last test'}
                   </Text>
                 </View>
               </View>
-              <MiniRing score={latest.healthScore} size={80} />
-            </View>
-
-            {/* ── Getting better ── */}
-            {improving.length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('improvingSection')}</Text>
-                {improving.map(d => (
-                  <TrendRow
-                    key={d.b.name} delta={d} lang={language}
-                    onPress={() => router.push(`/biomarker/${encodeURIComponent(d.b.name)}` as any)}
-                  />
-                ))}
-              </View>
             )}
 
-            {/* ── Needs attention ── */}
-            {worsening.length > 0 && (
+            {/* ── Biomarker trends — 2x2 sparkline grid (only when 2+ sessions) ── */}
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.bioTrendsTitle}>
+                {language === 'es' ? 'Tendencias de marcadores' : 'Biomarker trends'}
+              </Text>
+            </View>
+            <SparklineGrid sessions={sessions} language={language} />
+
+            {/* ── Getting better (positive framing, matches reference) ── */}
+            {improving.length > 0 && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>{t('decliningSection')}</Text>
-                {worsening.map(d => (
+                <Text style={styles.sectionTitle}>
+                  {'\uD83D\uDCC8 '}{language === 'es' ? 'Mejorando' : 'Improving'}
+                </Text>
+                {improving.map(d => (
                   <TrendRow
                     key={d.b.name} delta={d} lang={language}
                     onPress={() => router.push(`/biomarker/${encodeURIComponent(d.b.name)}` as any)}
@@ -600,27 +962,23 @@ export default function TrendsScreen() {
 
             {/* ── Improvement Simulation ── */}
             {(() => {
-              const oor = latest.biomarkers.filter(b => b.status !== 'normal');
+              const oor = biomarkers.filter(b => b.status !== 'normal');
               if (oor.length === 0) return null;
               const topMarkers = oor.slice(0, 3);
               const markerNames = topMarkers.map(b => b.name);
               const age = parseInt(userAge) || 40;
-              const sim = simulateImprovement(latest.biomarkers, markerNames, age);
+              const sim = simulateImprovement(biomarkers, markerNames, age);
               if (sim.scoreDelta <= 0) return null;
-
-              const markerDisplay = topMarkers
-                .map(b => getBiomarkerKnowledge(b.name)?.simpleName?.[language as 'en' | 'es'] ?? b.name)
-                .join(', ');
 
               return (
                 <View style={styles.simCard}>
-                  <Text style={styles.simTitle}>{t('simTitle')}</Text>
+                  <Text style={styles.simTitle}>
+                    {'\u2728 '}{language === 'es' ? '\u00bfY SI...?' : 'WHAT IF?'}
+                  </Text>
                   <Text style={styles.simBody}>
-                    {t('simBody', {
-                      markers: markerDisplay,
-                      current: String(sim.currentScore),
-                      projected: String(sim.projectedScore),
-                    })}
+                    {language === 'es'
+                      ? `Si mejoras ${topMarkers.length} marcadores, tu puntaje podria subir de ${sim.currentScore} a ${sim.projectedScore} (+${sim.scoreDelta})`
+                      : `If you improve ${topMarkers.length} markers, your score could go from ${sim.currentScore} to ${sim.projectedScore} (+${sim.scoreDelta})`}
                   </Text>
                   <View style={styles.simRings}>
                     <View style={styles.simRingWrap}>
@@ -648,87 +1006,41 @@ export default function TrendsScreen() {
               );
             })()}
 
-            {/* ── Doctor Questions (horizontal swipeable) ── */}
+            {/* ── Doctor Questions — mascot in Doctor pose + paged cards ── */}
             {(() => {
-              const questions = generateDoctorQuestions(latest.biomarkers);
+              const questions = generateDoctorQuestions(biomarkers);
               if (questions.length === 0) return null;
               return (
                 <View style={styles.section}>
-                  <View style={styles.sectionTitleRow}>
-                    <Stethoscope size={20} color={Colors.primary} />
-                    <View>
-                      <Text style={styles.sectionTitle}>{t('doctorQuestions')}</Text>
-                      <Text style={styles.sectionSub}>{t('doctorQuestionsSubtitle')}</Text>
+                  <View style={styles.doctorHeaderRow}>
+                    <Mascot pose="doctor" size={52} animation="idle-breath" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.sectionTitle}>
+                        {language === 'es' ? 'Pregunta a tu doctor' : 'Ask your doctor'}
+                      </Text>
+                      <Text style={styles.sectionSub}>
+                        {language === 'es'
+                          ? 'Preguntas sugeridas para tu proxima cita'
+                          : 'Suggested questions for your next visit'}
+                      </Text>
                     </View>
                   </View>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.doctorScroll}>
-                    <View style={styles.doctorScrollRow}>
-                      {questions.map((q, i) => (
-                        <DoctorQuestionCard
-                          key={i}
-                          question={q.question[language as 'en' | 'es']}
-                          marker={q.marker}
-                          lang={language}
-                        />
-                      ))}
-                    </View>
-                  </ScrollView>
+                  <PagedCards cardCount={questions.length}>
+                    {questions.map((q, i) => (
+                      <DoctorQuestionCard
+                        key={i}
+                        question={q.question[language as 'en' | 'es']}
+                        marker={q.marker}
+                        lang={language}
+                      />
+                    ))}
+                  </PagedCards>
                 </View>
               );
             })()}
 
-            {/* ── Badges ── */}
-            <View style={styles.section}>
-              <View style={styles.achHeader}>
-                <Trophy size={18} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>{t('badgesTitle')}</Text>
-                <Text style={styles.achCount}>
-                  {achievements.length}/{ACHIEVEMENTS.length}
-                </Text>
-              </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={styles.achRow}>
-                  {ACHIEVEMENTS.map(a => (
-                    <AchievementBadge
-                      key={a.id}
-                      id={a.id}
-                      name={a.name[language as 'en' | 'es']}
-                      icon={a.icon}
-                      unlocked={achievements.includes(a.id)}
-                    />
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
-            {/* ── Gamification Stats ── */}
-            <View style={styles.section}>
-              <View style={styles.gamifHeader}>
-                <Trophy size={20} color={Colors.gold} />
-                <Text style={styles.sectionTitle}>{t('yourProgressSection')}</Text>
-              </View>
-              <XPBar xp={xp} language={language} />
-              <View style={{ height: 12 }} />
-              <View style={styles.gamifStatsRow}>
-                <View style={styles.gamifStatBox}>
-                  <Text style={styles.gamifStatNum}>{achievements.length}/{ACHIEVEMENTS.length}</Text>
-                  <Text style={styles.gamifStatLabel}>{t('achievementsTitle')}</Text>
-                </View>
-                <View style={styles.gamifStatBox}>
-                  <Text style={styles.gamifStatNum}>{activeWeeks}</Text>
-                  <Text style={styles.gamifStatLabel}>{t('activeStreakLabel', { n: activeWeeks })}</Text>
-                </View>
-                <View style={styles.gamifStatBox}>
-                  <Text style={[styles.gamifStatNum, { color: getScoreLevel(healthScore).color }]}>
-                    {getScoreLevel(healthScore).name[language as 'en' | 'es']}
-                  </Text>
-                  <Text style={styles.gamifStatLabel}>{language === 'es' ? 'Nivel' : 'Level'}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* ── Health Plan ── */}
-            <HealthPlanSection t={t} language={language} />
+            {/* ── Milestones (hex badges) ── */}
+            <HitosSection achievements={achievements} language={language} />
           </>
         )}
       </ScrollView>
@@ -741,18 +1053,51 @@ export default function TrendsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
-  content: { padding: 20, paddingBottom: 100 },
+  content: { padding: 20, paddingBottom: 130 },
+
+  // ── Page header (reference style) ──
+  trendsHeader: { marginBottom: 18 },
+  trendsTitle: {
+    fontFamily: Typography.families.display,
+    fontSize: 28, fontWeight: '800', color: Colors.foreground,
+    letterSpacing: -0.5,
+  },
+  trendsSub: {
+    fontFamily: Typography.families.body,
+    fontSize: 14, color: Colors.mutedForeground, marginTop: 4,
+  },
+
+  // ── Biomarker trends section header ──
+  sectionHeaderRow: {
+    flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8, marginBottom: 12,
+  },
+  bioTrendsTitle: {
+    fontFamily: Typography.families.display,
+    fontSize: 20, fontWeight: '800', color: Colors.foreground,
+    letterSpacing: -0.3,
+  },
+
+  // ── Doctor questions header with mascot ──
+  doctorHeaderRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    marginBottom: 14,
+  },
 
   // Score celebration
   celebrationBanner: {
-    backgroundColor: Colors.optimal10,
-    borderRadius: 16, padding: 16, marginBottom: 12,
+    backgroundColor: '#E4F7E8',
+    borderRadius: 16, padding: 14, marginBottom: 16,
     borderWidth: 1, borderColor: Colors.optimal + '40',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+  },
+  celebrationEmoji: {
+    fontSize: 28,
   },
   celebrationTitle: {
     fontFamily: Typography.families.display,
-    fontSize: 18, fontWeight: '800', color: Colors.optimal, marginBottom: 2,
+    fontSize: 16, fontWeight: '800', color: Colors.optimal, marginBottom: 2,
   },
   celebrationSub: {
     fontFamily: Typography.families.body,
@@ -818,6 +1163,20 @@ const styles = StyleSheet.create({
   trendTag: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   trendTagText: { fontFamily: Typography.families.body, fontSize: 12, fontWeight: '600' },
 
+  // Biomarker breakdown
+  breakdownRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap',
+  },
+  breakdownChip: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  breakdownChipText: {
+    fontFamily: Typography.families.body, fontSize: 11, fontWeight: '700',
+  },
+  breakdownTotal: {
+    fontFamily: Typography.families.body, fontSize: 11, color: Colors.mutedForeground,
+  },
+
   // Sections
   section: { marginBottom: 28 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 12 },
@@ -844,11 +1203,9 @@ const styles = StyleSheet.create({
   trendRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trendValue: { fontFamily: Typography.families.body, fontSize: 13, fontWeight: '700' },
 
-  // Doctor cards (horizontal swipeable)
-  doctorScroll: { marginBottom: 4 },
-  doctorScrollRow: { flexDirection: 'row', gap: 12, paddingRight: 20 },
+  // Doctor cards (full-width paged)
   doctorCard: {
-    backgroundColor: '#fff', borderRadius: 18, padding: 16, width: 280,
+    backgroundColor: '#fff', borderRadius: 18, padding: 16,
     borderLeftWidth: 3, borderLeftColor: Colors.primary,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 1,
   },
@@ -876,6 +1233,20 @@ const styles = StyleSheet.create({
   shareBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-end' },
   shareBtnText: { fontFamily: Typography.families.body, fontSize: 12, fontWeight: '700' },
 
+  // Page dots
+  dotsRow: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 6, marginTop: 12,
+  },
+  dot: {
+    width: 7, height: 7, borderRadius: 3.5,
+    backgroundColor: Colors.outlineVariant,
+  },
+  dotActive: {
+    backgroundColor: Colors.primary,
+    width: 20, borderRadius: 4,
+  },
+
   // History
   historyRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -891,14 +1262,13 @@ const styles = StyleSheet.create({
 
   // Improvement Simulation
   simCard: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 24,
-    borderWidth: 1, borderColor: Colors.optimal + '25',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+    backgroundColor: '#FCE6EE', borderRadius: 20, padding: 20, marginBottom: 24,
+    borderWidth: 1, borderColor: '#F3BFD1',
   },
   simTitle: {
     fontFamily: Typography.families.display,
-    fontSize: 16, fontWeight: '800', color: Colors.foreground, marginBottom: 6,
+    fontSize: 16, fontWeight: '800', color: '#C87EA0', marginBottom: 6,
+    letterSpacing: 0.5,
   },
   simBody: {
     fontFamily: Typography.families.body,
@@ -926,12 +1296,64 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: Typography.families.display, fontSize: 22, fontWeight: '700', color: Colors.foreground, marginBottom: 12 },
   emptySub: { fontFamily: Typography.families.body, fontSize: 15, color: Colors.mutedForeground, textAlign: 'center', lineHeight: 24 },
 
-  // Badges
-  achHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  // Badges / Hitos (expandable hex grid)
+  achHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12,
+  },
   achCount: {
     fontFamily: Typography.families.body, fontSize: 12, color: Colors.mutedForeground, marginLeft: 'auto',
   },
-  achRow: { flexDirection: 'row', gap: 10, paddingRight: 12 },
+  badgeGrid: {
+    flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
+  },
+  badgeItem: {
+    width: (SCREEN_W - 40 - 30) / 4,
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  // Hex badge
+  hexContainer: {
+    width: HEX_SIZE, height: HEX_SIZE,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 5,
+  },
+  hexGlow: {
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  hexSvg: {
+    position: 'absolute',
+  },
+  hexContent: {
+    alignItems: 'center', justifyContent: 'center',
+  },
+  hexImage: {
+    width: HEX_IMG, height: HEX_IMG, borderRadius: 6,
+  },
+  hexEmoji: {
+    fontSize: 26,
+  },
+  badgeName: {
+    fontFamily: Typography.families.body,
+    fontSize: 10, fontWeight: '600', textAlign: 'center',
+    lineHeight: 13,
+  },
+  badgeUnlockedLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 9, fontWeight: '700', color: Colors.optimal,
+    marginTop: 2,
+  },
+  showMoreBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, marginTop: 14, paddingVertical: 8,
+  },
+  showMoreText: {
+    fontFamily: Typography.families.body,
+    fontSize: 13, fontWeight: '700', color: Colors.primary,
+  },
 
   // Gamification stats
   gamifHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
@@ -949,5 +1371,57 @@ const styles = StyleSheet.create({
   gamifStatLabel: {
     fontFamily: Typography.families.body,
     fontSize: 10, color: Colors.mutedForeground, textAlign: 'center',
+  },
+
+  // ─── Sparkline grid ──────────────────────────────────────
+  sparkGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sparkCard: {
+    width: (SCREEN_W - 40 - 8) / 2,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sparkName: {
+    fontFamily: Typography.families.body,
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.foreground,
+    marginBottom: 4,
+  },
+  sparkValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
+  sparkValue: {
+    fontFamily: Typography.families.body,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  sparkDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  sparkDateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  sparkDateLabel: {
+    fontFamily: Typography.families.body,
+    fontSize: 8,
+    color: Colors.outline,
   },
 });

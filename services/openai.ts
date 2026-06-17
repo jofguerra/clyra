@@ -1,4 +1,25 @@
-const OPENAI_API_KEY = process.env.EXPO_PUBLIC_OPENAI_API_KEY ?? '';
+// ─── Supabase Edge Function Proxy ────────────────────────────────────────────
+// All OpenAI calls go through the proxy — API key stays server-side.
+import { supabase } from './supabase';
+import * as FileSystem from 'expo-file-system/legacy';
+import { computeStatusFromRange } from '../constants/valueParsing';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+const PROXY_URL = `${SUPABASE_URL}/functions/v1/openai-proxy`;
+
+/** Get auth token for Edge Functions.
+ *  Uses user's JWT if logged in, otherwise falls back to the Supabase anon key
+ *  (which is a valid JWT that passes verify_jwt on edge functions). */
+async function getAuthToken(): Promise<string> {
+  try {
+    const { data } = await supabase.auth.getSession();
+    if (data.session?.access_token) {
+      return data.session.access_token;
+    }
+  } catch {}
+  // Guest user — anon key is a valid JWT that Supabase edge functions accept
+  return process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
+}
 
 export type Biomarker = {
   name: string;
@@ -13,65 +34,305 @@ export type LabResult = {
   testDate: string | null;  // ISO date string from the PDF (e.g. "2026-03-26"), or null
 };
 
-const defaultBiomarkersList = [
-  // Cardiovascular / Lípidos
-  "Colesterol Total", "Colesterol HDL", "Colesterol LDL", "Triglicéridos",
-  "PCR", "Proteína C Reactiva", "Homocisteína",
-  // Metabólico
-  "Glucosa", "Glucosa en Ayunas", "Hemoglobina A1c", "HbA1c", "Insulina",
-  // Renal
-  "Creatinina", "Ácido Úrico", "Urea", "BUN", "Sodio", "Potasio",
-  "PSA", "PSA Total", "Antígeno Prostático Específico",
-  // Hepático
-  "AST", "ALT", "GGT", "Bilirrubina Total", "Albúmina", "Fosfatasa Alcalina",
-  // Tiroideo
-  "TSH", "T3 Libre", "T4 Libre", "T3", "T4",
-  // Hematológico
-  "Hemoglobina", "Hematocrito", "Leucocitos", "Plaquetas",
-  "Neutrófilos", "Linfocitos", "Monocitos", "Eritrocitos", "VCM", "HCM",
-  // Hormonas / Endocrino
-  "Cortisol", "DHEA", "Testosterona", "Estradiol", "Progesterona",
-  "FSH", "LH", "Prolactina",
-  // Vitaminas / Minerales
-  "Vitamina D", "Vitamina B12", "Ácido Fólico", "Folato",
-  "Ferritina", "Hierro Sérico", "Transferrina",
-  "Calcio", "Magnesio", "Zinc",
-  // Urine (Orina)
-  "Glucosa (Orina)", "Albúmina (Orina)", "Nitratos", "Nitritos",
-  "Acetona", "Cetonas", "Sangre Oculta", "Bilis", "Bilirrubina (Orina)",
-  "Urobilinógeno", "Glóbulos Blancos (Orina)", "Leucocitos (Orina)",
+// ─── Biomarker Catalog ───────────────────────────────────────────────────────
+// Each entry: canonical name + aliases the PDF/lab might use.
+// The AI receives this as a rigid form — it can ONLY use these exact names.
+interface BiomarkerDef {
+  name: string;          // Canonical name (used in the app)
+  aliases: string[];     // What the PDF might call it (for AI matching)
+}
+
+const BIOMARKER_CATALOG: BiomarkerDef[] = [
+  // ── Cardiovascular / Lípidos ──
+  { name: 'Colesterol Total',    aliases: ['colesterol', 'cholesterol', 'total cholesterol', 'colesterol suero'] },
+  { name: 'Colesterol HDL',      aliases: ['hdl', 'hdl-colesterol', 'hdl cholesterol', 'lipoproteina alta densidad'] },
+  { name: 'Colesterol LDL',      aliases: ['ldl', 'ldl-colesterol', 'ldl cholesterol', 'lipoproteina baja densidad'] },
+  { name: 'Triglicéridos',       aliases: ['trigliceridos', 'triglycerides', 'trigliceridos suero'] },
+  { name: 'PCR',                 aliases: ['proteina c reactiva', 'pcr ultrasensible', 'hs-crp', 'crp'] },
+  { name: 'Homocisteína',        aliases: ['homocisteina', 'homocysteine'] },
+  // ── Metabólico ──
+  { name: 'Glucosa',             aliases: ['glucosa en ayunas', 'glucose', 'fasting glucose', 'glicemia', 'glucemia'] },
+  { name: 'Hemoglobina A1c',     aliases: ['hba1c', 'a1c', 'hemoglobina glicosilada', 'glycated hemoglobin'] },
+  { name: 'Insulina',            aliases: ['insulin', 'insulina basal'] },
+  // ── Renal ──
+  { name: 'Creatinina',          aliases: ['creatinine', 'creatinina serica'] },
+  { name: 'Ácido Úrico',         aliases: ['acido urico', 'uric acid'] },
+  { name: 'Urea',                aliases: ['urea serica'] },
+  { name: 'BUN',                 aliases: ['nitrogeno ureico', 'blood urea nitrogen'] },
+  { name: 'Sodio',               aliases: ['sodium', 'na'] },
+  { name: 'Potasio',             aliases: ['potassium', 'k'] },
+  { name: 'PSA Total',           aliases: ['psa', 'antigeno prostatico', 'prostate specific antigen'] },
+  // ── Hepático ──
+  { name: 'AST',                 aliases: ['got', 'aspartato aminotransferasa', 'tgo', 'sgot'] },
+  { name: 'ALT',                 aliases: ['gpt', 'alanina aminotransferasa', 'tgp', 'sgpt'] },
+  { name: 'GGT',                 aliases: ['gamma gt', 'gamma glutamil', 'gamma-glutamyl'] },
+  { name: 'Bilirrubina Total',   aliases: ['bilirubin total', 'bilirrubina'] },
+  { name: 'Bilirrubina Directa', aliases: ['bilirubin direct', 'bilirrubina conjugada'] },
+  { name: 'Albúmina',            aliases: ['albumin', 'albumina'] },
+  { name: 'Fosfatasa Alcalina',  aliases: ['alkaline phosphatase', 'alp', 'fa'] },
+  { name: 'Proteínas Totales',   aliases: ['total protein', 'proteinas totales'] },
+  { name: 'Globulina',           aliases: ['globulin'] },
+  { name: 'Relación A/G',        aliases: ['a/g ratio', 'albumin/globulin'] },
+  // ── Tiroideo ──
+  { name: 'TSH',                 aliases: ['tirotropina', 'thyroid stimulating hormone'] },
+  { name: 'T3 Libre',            aliases: ['free t3', 'ft3', 'triiodotironina libre'] },
+  { name: 'T4 Libre',            aliases: ['free t4', 'ft4', 'tiroxina libre'] },
+  { name: 'T3',                  aliases: ['triiodotironina', 'triiodothyronine'] },
+  { name: 'T4',                  aliases: ['tiroxina', 'thyroxine'] },
+  // ── Hematológico ──
+  { name: 'Hemoglobina',         aliases: ['hemoglobin', 'hb', 'hgb'] },
+  { name: 'Hematocrito',         aliases: ['hematocrit', 'hct'] },
+  { name: 'Leucocitos',          aliases: ['g. blancos', 'globulos blancos', 'white blood cells', 'wbc'] },
+  { name: 'Plaquetas',           aliases: ['platelets', 'plt', 'trombocitos'] },
+  { name: 'Neutrófilos',         aliases: ['neutrofilos', 'neutrophils', 'neut'] },
+  { name: 'Linfocitos',          aliases: ['lymphocytes', 'lymph'] },
+  { name: 'Monocitos',           aliases: ['monocytes', 'mono'] },
+  { name: 'Eosinófilos',         aliases: ['eosinofilos', 'eosinophils', 'eos'] },
+  { name: 'Basófilos',           aliases: ['basofilos', 'basophils', 'baso'] },
+  { name: 'Eritrocitos',         aliases: ['g. rojos', 'globulos rojos', 'red blood cells', 'rbc'] },
+  { name: 'VCM',                 aliases: ['mcv', 'volumen corpuscular medio', 'mean corpuscular volume'] },
+  { name: 'HCM',                 aliases: ['mch', 'hemoglobina corpuscular media', 'mean corpuscular hemoglobin'] },
+  { name: 'CCMH',                aliases: ['mchc', 'concentracion de hemoglobina corpuscular media', 'chcm'] },
+  { name: 'IDE',                 aliases: ['rdw', 'indice de distribucion eritrocitaria', 'red cell distribution width'] },
+  // ── Inflamación ──
+  { name: 'VSG',                 aliases: ['velocidad de sedimentacion', 'sed rate', 'esr'] },
+  // ── Hormonas ──
+  { name: 'Cortisol',            aliases: ['cortisol serico', 'serum cortisol'] },
+  { name: 'DHEA',                aliases: ['dhea-s', 'dhea sulfato', 'dehydroepiandrosterone'] },
+  { name: 'Testosterona',        aliases: ['testosterone', 'testosterona total'] },
+  { name: 'Estradiol',           aliases: ['e2', 'estradiol serico'] },
+  { name: 'Progesterona',        aliases: ['progesterone'] },
+  { name: 'FSH',                 aliases: ['follicle stimulating hormone', 'foliculo estimulante'] },
+  { name: 'LH',                  aliases: ['luteinizing hormone', 'hormona luteinizante'] },
+  { name: 'Prolactina',          aliases: ['prolactin'] },
+  // ── Vitaminas / Minerales ──
+  { name: 'Vitamina D',          aliases: ['25-oh vitamina d', 'vitamin d', '25-hydroxyvitamin d', 'calcidiol'] },
+  { name: 'Vitamina B12',        aliases: ['vitamin b12', 'cobalamina', 'cianocobalamina'] },
+  { name: 'Ácido Fólico',        aliases: ['folato', 'folic acid', 'folate'] },
+  { name: 'Ferritina',           aliases: ['ferritin'] },
+  { name: 'Hierro Sérico',       aliases: ['hierro', 'iron', 'serum iron'] },
+  { name: 'Transferrina',        aliases: ['transferrin'] },
+  { name: 'Calcio',              aliases: ['calcium', 'ca'] },
+  { name: 'Magnesio',            aliases: ['magnesium', 'mg'] },
+  { name: 'Zinc',                aliases: ['zn'] },
+  // ── Orina ──
+  { name: 'Glucosa (Orina)',     aliases: ['glucose urine'] },
+  { name: 'Albúmina (Orina)',    aliases: ['albumin urine', 'microalbuminuria'] },
+  { name: 'Nitritos',            aliases: ['nitrites'] },
+  { name: 'Cetonas',             aliases: ['acetona', 'ketones'] },
+  { name: 'Sangre Oculta',       aliases: ['occult blood', 'sangre oculta en heces'] },
+  { name: 'Bilirrubina (Orina)', aliases: ['bilis orina'] },
+  { name: 'Urobilinógeno',       aliases: ['urobilinogen', 'urobilinogeno'] },
 ];
 
-const authHeaders = {
-  'Authorization': `Bearer ${OPENAI_API_KEY}`,
-  'Content-Type': 'application/json',
-  'OpenAI-Beta': 'assistants=v2',
-};
+// Build the flat list of canonical names (used in prompts)
+const defaultBiomarkersList = BIOMARKER_CATALOG.map(b => b.name);
+
+// Build the prompt template: tells AI exactly which names to use and what aliases to look for
+function buildBiomarkerPromptTable(): string {
+  return BIOMARKER_CATALOG.map(b =>
+    `"${b.name}" (in the PDF might appear as: ${b.aliases.join(', ')})`
+  ).join('\n');
+}
+
+// ─── Name Normalization ──────────────────────────────────────────────────────
+
+/** Strips accents and lowercases for comparison. */
+function normKey(s: string): string {
+  return s.toLowerCase().trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // strip accents
+    .replace(/[()]/g, '')  // strip parens
+    .replace(/\s+/g, ' '); // collapse spaces
+}
+
+// Auto-generated from BIOMARKER_CATALOG: maps every alias + canonical name → canonical name.
+const NAME_ALIASES: Record<string, string> = (() => {
+  const map: Record<string, string> = {};
+  for (const b of BIOMARKER_CATALOG) {
+    // Map the canonical name itself
+    map[normKey(b.name)] = b.name;
+    // Map all aliases
+    for (const alias of b.aliases) {
+      map[normKey(alias)] = b.name;
+    }
+  }
+  // Extra catch-all aliases for common AI inventions
+  map['oxigeno en sangre'] = 'Hemoglobina';
+  map['coagulacion de sangre'] = 'Plaquetas';
+  map['linfocitos memoria inmune'] = 'Linfocitos';
+  map['hemoglobina por celula hcm'] = 'HCM';
+  map['tamano de globulos rojos vcm'] = 'VCM';
+  map['concentracion de hemoglobina'] = 'CCMH';
+  return map;
+})();
+
+/** Post-process biomarkers: normalize names, deduplicate, validate. */
+function normalizeBiomarkers(biomarkers: Biomarker[]): Biomarker[] {
+  const result: Biomarker[] = [];
+  const seen = new Set<string>();
+
+  for (const b of biomarkers) {
+    // Normalize name
+    const key = normKey(b.name);
+    let canonicalName = NAME_ALIASES[key];
+
+    // Try partial matches if exact match fails
+    if (!canonicalName) {
+      for (const [alias, canonical] of Object.entries(NAME_ALIASES)) {
+        if (key.includes(alias) || alias.includes(key)) {
+          canonicalName = canonical;
+          break;
+        }
+      }
+    }
+
+    // Use canonical name if found, otherwise title-case the original
+    if (canonicalName) {
+      b.name = canonicalName;
+    } else {
+      // Title case: first letter of each word uppercase
+      b.name = b.name.trim().replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    // Deduplicate by canonical name
+    const dedupeKey = normKey(b.name);
+    if (seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+
+    // Clean value — ensure it's a string or number
+    if (typeof b.value === 'string') {
+      b.value = b.value.trim();
+    }
+
+    // Status: compute deterministically from the reference range when the value
+    // is numeric and the range is parseable. This is far more reliable than the
+    // LLM's own classification, which drives the entire app (score, risks, body
+    // map colors, priorities). Fall back to the AI status only when we can't
+    // decide (qualitative results like "Negativo", or an unparseable range).
+    const computedStatus = computeStatusFromRange(b.value, b.referenceRange);
+    if (computedStatus) {
+      b.status = computedStatus;
+    } else if (!['normal', 'low', 'high', 'borderline'].includes(b.status)) {
+      b.status = 'normal';
+    }
+
+    result.push(b);
+  }
+
+  return result;
+}
+
+/** Strip HTML tags from error responses to produce a clean user-facing message. */
+function cleanErrorText(raw: string): string {
+  // If it looks like HTML, extract meaningful text
+  if (raw.includes('<html') || raw.includes('<HTML') || raw.includes('<!DOCTYPE')) {
+    const titleMatch = raw.match(/<title[^>]*>(.*?)<\/title>/i);
+    const h1Match = raw.match(/<h1[^>]*>(.*?)<\/h1>/i);
+    return h1Match?.[1] ?? titleMatch?.[1] ?? 'Server error';
+  }
+  // Try to parse JSON error
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed.error?.message) return parsed.error.message;
+    if (parsed.message) return parsed.message;
+  } catch {}
+  return raw.slice(0, 200);
+}
+
+/** Retry-aware fetch for transient server errors (502, 503, 504). */
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxRetries = 2,
+): Promise<Response> {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok || (res.status < 500 && res.status !== 429)) return res;
+      // Retry on 502/503/504/429
+      if (attempt < maxRetries && [502, 503, 504, 429].includes(res.status)) {
+        const delay = Math.min(2000 * (attempt + 1), 6000);
+        __DEV__ && console.log(`[Clyra] Retrying (${attempt + 1}/${maxRetries}) after ${res.status}...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      return res; // Final attempt — let caller handle
+    } catch (e) {
+      lastError = e as Error;
+      if (attempt < maxRetries) {
+        const delay = Math.min(2000 * (attempt + 1), 6000);
+        __DEV__ && console.log(`[Clyra] Network error, retrying (${attempt + 1}/${maxRetries})...`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+    }
+  }
+  throw lastError ?? new Error('Request failed after retries');
+}
+
+/** Build headers for proxy requests. Token is passed to authenticate with Supabase. */
+async function proxyHeaders(extraHeaders?: Record<string, string>): Promise<Record<string, string>> {
+  const token = await getAuthToken();
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'OpenAI-Beta': 'assistants=v2',
+    ...extraHeaders,
+  };
+}
+
+/** Extracts the OpenAI API path from a full URL (e.g. https://api.openai.com/v1/chat/completions → /v1/chat/completions) */
+function openaiPath(url: string): string {
+  return url.replace('https://api.openai.com', '');
+}
 
 async function apiPost(url: string, body: object) {
-  const res = await fetch(url, {
+  const headers = await proxyHeaders({ 'x-openai-path': openaiPath(url) });
+  const res = await fetchWithRetry(PROXY_URL, {
     method: 'POST',
-    headers: authHeaders,
+    headers,
     body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`${url} → ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(cleanErrorText(text));
   }
   return res.json();
 }
 
 async function apiGet(url: string) {
-  const res = await fetch(url, { headers: authHeaders });
+  const headers = await proxyHeaders({ 'x-openai-path': openaiPath(url) });
+  const res = await fetchWithRetry(PROXY_URL, { headers });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`GET ${url} → ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(cleanErrorText(text));
   }
   return res.json();
 }
 
 async function apiDelete(url: string) {
-  await fetch(url, { method: 'DELETE', headers: authHeaders }).catch(() => null);
+  const headers = await proxyHeaders({ 'x-openai-path': openaiPath(url) });
+  await fetch(PROXY_URL, { method: 'DELETE', headers }).catch(() => null);
+}
+
+/** Generic proxy fetch for direct OpenAI API calls (chat completions, file content, etc.) */
+async function proxyFetch(openaiUrl: string, init?: RequestInit): Promise<Response> {
+  const path = openaiPath(openaiUrl);
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${token}`,
+    'x-openai-path': path,
+    ...(init?.headers as Record<string, string> ?? {}),
+  };
+  // Remove any direct OpenAI auth — proxy handles it
+  delete headers['Authorization'];
+  headers['Authorization'] = `Bearer ${token}`;
+
+  return fetch(PROXY_URL, {
+    ...init,
+    headers,
+  });
 }
 
 async function poll<T>(
@@ -90,16 +351,43 @@ async function poll<T>(
   throw new Error('Timeout waiting for operation to complete');
 }
 
+// ─── Shared Extraction Prompt ────────────────────────────────────────────────
+// The AI receives a rigid "form" — it can ONLY use these predefined biomarker names.
+
+function buildExtractionSystemPrompt(): string {
+  const table = buildBiomarkerPromptTable();
+  return `You are an expert medical data extractor. Your job is to read a lab report and fill in values for a PREDEFINED list of biomarkers.
+
+RULES:
+1. You MUST use ONLY the exact biomarker names from the list below. NEVER invent new names, NEVER use abbreviations, NEVER use ALL CAPS, NEVER create "friendly" display names.
+2. Each biomarker in the list has aliases showing how it might appear in the PDF. Match the PDF text to the correct canonical name.
+3. Read each row of the lab report carefully. The value, unit, and reference range MUST come from the SAME ROW. NEVER swap values between biomarkers.
+4. Only include biomarkers that actually appear in the document. Do NOT guess or hallucinate values.
+5. Also extract the test date (look for "Fecha", "Date", "Collection Date", etc.).
+6. Copy the "value" EXACTLY as printed, including its decimal separator (e.g. "1,25" stays "1,25"). Do NOT round, reformat, or convert units.
+7. Copy the "referenceRange" EXACTLY as printed (e.g. "70 - 100", "< 5.7", "> 40", "Hasta 100"). This is REQUIRED whenever the row shows a range — the app uses it to determine status, so accuracy here is critical.
+
+STATUS RULES (best-effort fallback — the app recomputes status from the reference range):
+- "normal" = clearly within the reference range
+- "borderline" = within 10% of limits or just slightly outside
+- "high" = clearly above the reference range by more than 10%
+- "low" = clearly below the reference range by more than 10%
+
+PREDEFINED BIOMARKER LIST (use ONLY these exact names):
+${table}
+
+RESPOND ONLY with valid JSON, no extra text:
+{"testDate":"YYYY-MM-DD or null","biomarkers":[{"name":"EXACT_NAME_FROM_LIST","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`;
+}
+
 /**
  * Fallback extraction using Chat Completions API with file content.
  * Used when the Assistants API + file_search fails (common with short PDFs).
  * Retrieves the file content and sends it directly to gpt-4o.
  */
 async function extractWithChatCompletionsFallback(fileId: string): Promise<LabResult> {
-  // Download the file content from OpenAI
-  const contentRes = await fetch(`https://api.openai.com/v1/files/${fileId}/content`, {
-    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
-  });
+  // Download the file content from OpenAI (via proxy)
+  const contentRes = await proxyFetch(`https://api.openai.com/v1/files/${fileId}/content`, {});
 
   let fileContentForPrompt: string;
 
@@ -123,28 +411,22 @@ async function extractWithChatCompletionsFallback(fileId: string): Promise<LabRe
 
       // Use vision endpoint with the PDF as an image
       __DEV__ && console.log('[Clyra] Fallback: sending PDF as base64 to vision API...');
-      const visionRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      const visionRes = await proxyFetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [
             {
               role: 'system',
-              content: `You are an expert medical assistant. Extract ALL biomarkers/test results from this lab report — even if there is only ONE result. Do NOT return an empty array.
-Look for: ${defaultBiomarkersList.join(', ')}, and any other lab value present.
-Also extract the test date.
-RESPOND ONLY with valid JSON: {"testDate":"YYYY-MM-DD or null","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
+              content: buildExtractionSystemPrompt(),
             },
             {
               role: 'user',
               content: [
                 {
                   type: 'text',
-                  text: 'Extract every biomarker from this lab report. Even if there is only 1 result, return it.',
+                  text: 'Extract every biomarker from this lab report. Read each row carefully — match each value to its correct biomarker name on the same row. Even if there is only 1 result, return it.',
                 },
                 {
                   type: 'image_url',
@@ -176,21 +458,15 @@ RESPOND ONLY with valid JSON: {"testDate":"YYYY-MM-DD or null","biomarkers":[{"n
   }
 
   // If we got text content, send it to Chat Completions
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await proxyFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `You are an expert medical assistant. Extract ALL biomarkers/test results from this lab report text — even if there is only ONE result. Do NOT return an empty array.
-Look for: ${defaultBiomarkersList.join(', ')}, and any other lab value present.
-Also extract the test date.
-RESPOND ONLY with valid JSON: {"testDate":"YYYY-MM-DD or null","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
+          content: buildExtractionSystemPrompt(),
         },
         {
           role: 'user',
@@ -245,196 +521,78 @@ function parseBiomarkerJSON(text: string): LabResult {
     testDate = null;
   }
 
-  return { biomarkers, testDate };
+  return { biomarkers: normalizeBiomarkers(biomarkers), testDate };
 }
 
 /**
- * Extracts biomarkers from a PDF using OpenAI Assistants API.
- * Uses fetch + FormData for reliable file upload on React Native.
+ * Extracts biomarkers from a PDF using Chat Completions (gpt-4o) with vision.
+ * Reads the PDF as base64 and sends it in a single request — fast, no polling.
  */
 export const extractLabResultsFromPDF = async (
   pdfUri: string,
-  pdfName: string = 'lab_results.pdf',
+  _pdfName: string = 'lab_results.pdf',
 ): Promise<LabResult> => {
-  if (!OPENAI_API_KEY) {
-    throw new Error('Falta la clave de API de OpenAI. Configura EXPO_PUBLIC_OPENAI_API_KEY en .env');
-  }
+  // 1. Read PDF as base64 on device
+  __DEV__ && console.log('[Clyra] Reading PDF...');
+  const base64 = await FileSystem.readAsStringAsync(pdfUri, {
+    encoding: 'base64',
+  });
 
-  // 1. Upload PDF via FormData (more reliable than FileSystem.uploadAsync)
-  __DEV__ && console.log('[Clyra] Uploading PDF...');
-  const formData = new FormData();
-  formData.append('file', { uri: pdfUri, name: pdfName, type: 'application/pdf' } as any);
-  formData.append('purpose', 'assistants');
-
-  const uploadRes = await fetch('https://api.openai.com/v1/files', {
+  // 2. Send directly to Chat Completions with vision (single request)
+  __DEV__ && console.log('[Clyra] Sending PDF to GPT-4o...');
+  const res = await proxyFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}` },
-    body: formData,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: buildExtractionSystemPrompt(),
+        },
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: 'Extract every biomarker from this lab report PDF. Read each row carefully — match each value to its correct biomarker name on the same row. Even if there is only 1 result, return it. Return ONLY valid JSON.',
+            },
+            {
+              type: 'file',
+              file: {
+                filename: _pdfName,
+                file_data: `data:application/pdf;base64,${base64}`,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 4096,
+      temperature: 0.2,
+    }),
   });
 
-  if (!uploadRes.ok) {
-    const text = await uploadRes.text();
-    throw new Error(`Upload failed (${uploadRes.status}): ${text.slice(0, 300)}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`PDF extraction failed: ${cleanErrorText(text)}`);
   }
 
-  const uploadData = await uploadRes.json();
-  const file_id: string = uploadData.id;
-  if (!file_id) throw new Error('No file_id returned from upload');
-  if (uploadData.bytes === 0) throw new Error('El archivo subido está vacío (0 bytes).');
+  const data = await res.json();
+  const responseText = data.choices?.[0]?.message?.content?.trim() ?? '';
 
-  // 2. Wait for file to be processed
-  __DEV__ && console.log('[Clyra] Waiting for file processing...');
-  await poll(
-    () => apiGet(`https://api.openai.com/v1/files/${file_id}`),
-    (d) => d.status === 'processed',
-    (d) => d.status === 'error',
-    1500, 20,
-  ).catch(() => {
-    // Some PDFs skip the processing step — continue anyway
-    __DEV__ && console.log('[Clyra] File status poll timed out, continuing...');
-  });
-
-  // 3. Create Vector Store
-  __DEV__ && console.log('[Clyra] Creating vector store...');
-  const { id: vector_store_id } = await apiPost('https://api.openai.com/v1/vector_stores', {
-    name: 'Lab Results Store',
-    file_ids: [file_id],
-  });
-
-  // 4. Wait for Vector Store
-  await poll(
-    () => apiGet(`https://api.openai.com/v1/vector_stores/${vector_store_id}`),
-    (d) => d.status === 'completed',
-    (d) => d.status === 'failed',
-    2000, 20,
-  );
-
-  // 5. Create temporary Assistant
-  __DEV__ && console.log('[Clyra] Creating assistant...');
-  const { id: assistant_id } = await apiPost('https://api.openai.com/v1/assistants', {
-    model: 'gpt-4o',
-    name: 'Lab Data Extractor',
-    instructions: `You are an expert medical assistant. Extract ALL biomarkers/test results from the attached lab report — even if there is only ONE single result in the entire document. Do not skip any test result.
-Look especially for: ${defaultBiomarkersList.join(', ')}, but also extract ANY other lab value you find.
-Also extract the test/collection date from the document (look for "Fecha", "Date", "Collection Date", "Report Date", etc.).
-Compare against standard adult reference ranges if not shown in the document.
-Classify as "borderline" if a value is at the edge of the normal range.
-IMPORTANT: Even if the document contains only 1 biomarker, you MUST return it. An empty biomarkers array is NEVER acceptable if the document contains any test result.
-RESPOND ONLY with a valid JSON object — no extra text, no markdown, no explanations.
-Required format:
-{"testDate":"YYYY-MM-DD or null if not found","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
-    tools: [{ type: 'file_search' }],
-    tool_resources: { file_search: { vector_store_ids: [vector_store_id] } },
-  });
-
-  // 6. Create Thread + Run
-  __DEV__ && console.log('[Clyra] Creating thread...');
-  const { id: thread_id } = await apiPost('https://api.openai.com/v1/threads', {
-    messages: [{
-      role: 'user',
-      content: 'Search the attached PDF and extract every single lab test result / biomarker. Even if there is only ONE result (e.g. PSA Total), you MUST include it. Return the JSON object with testDate and biomarkers array. Do NOT return an empty array.',
-    }],
-  });
-
-  __DEV__ && console.log('[Clyra] Starting run...');
-  const { id: run_id } = await apiPost(`https://api.openai.com/v1/threads/${thread_id}/runs`, {
-    assistant_id,
-  });
-
-  // 7. Poll run status
-  await poll(
-    () => apiGet(`https://api.openai.com/v1/threads/${thread_id}/runs/${run_id}`),
-    (d) => d.status === 'completed',
-    (d) => ['failed', 'cancelled', 'expired', 'requires_action'].includes(d.status),
-    2000, 40,
-  );
-
-  // 8. Fetch messages
-  __DEV__ && console.log('[Clyra] Fetching results...');
-  const messagesData = await apiGet(`https://api.openai.com/v1/threads/${thread_id}/messages`);
-  const finalMessage = messagesData.data?.find((m: any) => m.role === 'assistant');
-  if (!finalMessage) throw new Error('No response from assistant');
-
-  const textBlock = finalMessage.content?.find((c: any) => c.type === 'text');
-  if (!textBlock) throw new Error('Assistant returned no text content');
-
-  let text: string = textBlock.text.value ?? '';
-  // Strip file_search citations like 【4:0†source】
-  text = text.replace(/【[^】]*】/g, '');
-  // Strip markdown fences
-  text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-  // Try to extract the new object format { testDate, biomarkers }
-  // Fall back to old array format for compatibility
-  let biomarkers: Biomarker[];
-  let testDate: string | null = null;
-
-  const objMatch = text.match(/\{[\s\S]*\}/);
-  const arrMatch = text.match(/\[[\s\S]*\]/);
-
-  if (objMatch) {
-    try {
-      const parsed = JSON.parse(objMatch[0]);
-      if (parsed.biomarkers && Array.isArray(parsed.biomarkers)) {
-        biomarkers = parsed.biomarkers;
-        testDate = parsed.testDate ?? null;
-      } else if (Array.isArray(parsed)) {
-        biomarkers = parsed;
-      } else {
-        throw new Error('Unexpected JSON structure');
-      }
-    } catch {
-      // Fall through to array match
-      if (!arrMatch) throw new Error(`Could not parse response JSON: ${text.slice(0, 300)}`);
-      biomarkers = JSON.parse(arrMatch[0]);
-    }
-  } else if (arrMatch) {
-    try {
-      biomarkers = JSON.parse(arrMatch[0]);
-    } catch (e) {
-      throw new Error(`JSON parse error: ${(e as Error).message}. Text: ${arrMatch[0].slice(0, 200)}`);
-    }
-  } else {
-    throw new Error(`No JSON found in response. Got: ${text.slice(0, 300)}`);
+  if (!responseText) {
+    throw new Error('No response from AI');
   }
 
-  if (!Array.isArray(biomarkers) || biomarkers.length === 0) {
-    // Fallback: use Chat Completions API with the file content directly
-    // The Assistants API + file_search can struggle with very short PDFs (1-2 results)
-    __DEV__ && console.log('[Clyra] No biomarkers from Assistants API, trying Chat Completions fallback...');
+  // 3. Parse the response
+  const result = parseBiomarkerJSON(responseText);
 
-    try {
-      const fallbackResult = await extractWithChatCompletionsFallback(file_id);
-      if (fallbackResult.biomarkers.length > 0) {
-        biomarkers = fallbackResult.biomarkers;
-        testDate = fallbackResult.testDate;
-      }
-    } catch (e) {
-      __DEV__ && console.log('[Clyra] Chat Completions fallback failed:', e);
-    }
-
-    __DEV__ && console.log(`[Clyra] Fallback result: ${biomarkers?.length ?? 0} biomarkers`);
-
-    if (!Array.isArray(biomarkers) || biomarkers.length === 0) {
-      throw new Error('No biomarkers found in the document.');
-    }
+  if (result.biomarkers.length === 0) {
+    throw new Error('No biomarkers found in the document.');
   }
 
-  // Validate testDate format (YYYY-MM-DD)
-  if (testDate && !/^\d{4}-\d{2}-\d{2}$/.test(testDate)) {
-    testDate = null;
-  }
-
-  // 9. Cleanup
-  __DEV__ && console.log('[Clyra] Cleaning up...');
-  await Promise.all([
-    apiDelete(`https://api.openai.com/v1/assistants/${assistant_id}`),
-    apiDelete(`https://api.openai.com/v1/vector_stores/${vector_store_id}`),
-    apiDelete(`https://api.openai.com/v1/files/${file_id}`),
-    apiDelete(`https://api.openai.com/v1/threads/${thread_id}`),
-  ]);
-
-  return { biomarkers, testDate };
+  __DEV__ && console.log(`[Clyra] Extracted ${result.biomarkers.length} biomarkers`);
+  return result;
 };
 
 /**
@@ -444,14 +602,11 @@ Required format:
 export const extractLabResultsFromImage = async (
   imageUri: string,
 ): Promise<LabResult> => {
-  if (!OPENAI_API_KEY) {
-    throw new Error('Falta la clave de API de OpenAI. Configura EXPO_PUBLIC_OPENAI_API_KEY en .env');
-  }
+  // API key is now server-side in Supabase Edge Function
 
   // 1. Read image as base64
-  const FileSystem = require('expo-file-system');
   const base64 = await FileSystem.readAsStringAsync(imageUri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: 'base64',
   });
 
   // Determine mime type from URI
@@ -461,24 +616,15 @@ export const extractLabResultsFromImage = async (
   __DEV__ && console.log('[Clyra] Sending image to GPT-4o vision...');
 
   // 2. Call Chat Completions with vision
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await proxyFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: `You are an expert medical assistant. Extract all biomarkers from the attached lab report image (look especially for: ${defaultBiomarkersList.join(', ')}).
-Also extract the test/collection date from the document (look for "Fecha", "Date", "Collection Date", "Report Date", etc.).
-Compare against standard adult reference ranges if not shown in the document.
-Classify as "borderline" if a value is at the edge of the normal range.
-RESPOND ONLY with a valid JSON object — no extra text, no markdown, no explanations.
-Required format:
-{"testDate":"YYYY-MM-DD or null if not found","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
+          content: buildExtractionSystemPrompt(),
         },
         {
           role: 'user',
@@ -550,24 +696,15 @@ Required format:
     __DEV__ && console.log('[Clyra] No biomarkers from image on first attempt, retrying in 2s...');
     await new Promise(r => setTimeout(r, 2000));
 
-    const retryRes = await fetch('https://api.openai.com/v1/chat/completions', {
+    const retryRes = await proxyFetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'gpt-4o',
         messages: [
           {
             role: 'system',
-            content: `You are an expert medical assistant. Extract all biomarkers from the attached lab report image (look especially for: ${defaultBiomarkersList.join(', ')}).
-Also extract the test/collection date from the document (look for "Fecha", "Date", "Collection Date", "Report Date", etc.).
-Compare against standard adult reference ranges if not shown in the document.
-Classify as "borderline" if a value is at the edge of the normal range.
-RESPOND ONLY with a valid JSON object — no extra text, no markdown, no explanations.
-Required format:
-{"testDate":"YYYY-MM-DD or null if not found","biomarkers":[{"name":"Name","value":"Value","unit":"Unit","status":"normal|low|high|borderline","referenceRange":"range"}]}`,
+            content: buildExtractionSystemPrompt(),
           },
           {
             role: 'user',
@@ -623,6 +760,9 @@ Required format:
     testDate = null;
   }
 
+  // Normalize names
+  biomarkers = normalizeBiomarkers(biomarkers);
+
   return { biomarkers, testDate };
 };
 
@@ -644,7 +784,7 @@ export async function chatWithAI(params: {
   userSex?: 'male' | 'female' | null;
   healthGoals?: string[];
 }): Promise<string> {
-  if (!OPENAI_API_KEY) throw new Error('Missing OpenAI API key');
+  // API key is now server-side in Supabase Edge Function
 
   const { messages, biomarkers, lang, userAge, userSex, healthGoals } = params;
 
@@ -683,12 +823,9 @@ ${panelLines || 'No test data available.'}
 
 Respond concisely (max 4 sentences), warmly, and practically. If asked something outside medical scope, kindly redirect.`;
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await proxyFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [
@@ -723,10 +860,7 @@ export async function getPersonalizedBiomarkerInsight(params: {
   userSex?: 'male' | 'female' | null;
   lang: 'en' | 'es';
 }): Promise<string> {
-  if (!OPENAI_API_KEY) {
-    throw new Error('Missing OpenAI API key');
-  }
-
+  // API key is now server-side in Supabase Edge Function
   const { name, value, unit, status, referenceRange, userAge, userSex, lang } = params;
 
   const ageStr = userAge ? (lang === 'es' ? `${userAge} años` : `${userAge}-year-old`) : '';
@@ -746,12 +880,9 @@ export async function getPersonalizedBiomarkerInsight(params: {
     ? `El usuario${who ? ` es ${who}` : ''}. Su resultado de ${name}: ${value} ${unit}${refStr}. Estado: ${status}. Explica qué significa esto para ellos y qué pueden hacer.`
     : `The user${who ? ` is a ${who}` : ''}. Their ${name} result: ${value} ${unit}${refStr}. Status: ${status}. Explain what this means for them and what they can do about it.`;
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await proxyFetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [

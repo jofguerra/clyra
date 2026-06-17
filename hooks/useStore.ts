@@ -5,7 +5,11 @@ import { Biomarker } from '../services/openai';
 import { computeHealthScore } from '../constants/biomarkerSystems';
 import { Lang } from '../constants/i18n';
 import { XP_ACTIONS } from '../constants/gamification';
-import { pushLocalToCloud, pullCloudToLocal, signOut as supabaseSignOut } from '../services/sync';
+import {
+  pushLocalToCloud, pullCloudToLocal, signOut as supabaseSignOut,
+  recordMissionEvent, getWeeklyMissionCount, updateProfile,
+  type MissionType,
+} from '../services/sync';
 
 export type HealthGoal =
   | 'mood'
@@ -44,7 +48,11 @@ interface UserState {
   // Gamification
   xp: number;
   achievements: string[];
+  /** Mission IDs completed TODAY (resets at local midnight) — hydrated from the
+   *  server on every pull; optimistically appended on every completeMission. */
   completedMissions: string[];
+  /** Count of weekly-type mission events in the current ISO week. */
+  weeklyMissionCount: number;
   lastActiveDate: string | null;
   activeWeeks: number;
   // Test reminder
@@ -56,6 +64,13 @@ interface UserState {
   subscriptionCancelled: boolean;
   // Sync
   lastSyncedAt: string | null;
+  // Recently updated/added biomarker names (cleared when user views them)
+  recentlyUpdatedBiomarkers: string[];  // canonical names that were updated
+  recentlyAddedBiomarkers: string[];    // canonical names that are brand new
+  clearRecentBiomarkers: () => void;
+  // Newly unlocked achievements queued for celebration modal (FIFO)
+  pendingUnlockedAchievements: string[];
+  dequeueUnlockedAchievement: () => void;
   // Actions
   setHasCompletedOnboarding: (val: boolean) => void;
   setUserName: (val: string) => void;
@@ -68,8 +83,12 @@ interface UserState {
   setSessions: (sessions: ExamSession[]) => void;
   addXP: (amount: number) => void;
   unlockAchievement: (id: string) => void;
-  completeMission: (id: string) => void;
+  /** Mark a mission as completed — optimistic local update + fire-and-forget
+   *  server event via record_mission_event RPC. */
+  completeMission: (id: string, type: MissionType, xpOverride?: number) => void;
   updateStreak: () => void;
+  /** Fetch current-week weekly mission count from server into state. */
+  refreshWeeklyMissionCount: () => Promise<void>;
   setTestReminderDays: (days: number) => void;
   setSubscription: (plan: 'monthly' | 'annual' | null, expiresAt: string | null) => void;
   setSubscriptionCancelled: (val: boolean) => void;
@@ -100,6 +119,7 @@ export const useStore = create<UserState>()(
       xp: 0,
       achievements: [],
       completedMissions: [],
+      weeklyMissionCount: 0,
       lastActiveDate: null,
       activeWeeks: 0,
       // Test reminder
@@ -111,6 +131,15 @@ export const useStore = create<UserState>()(
       subscriptionCancelled: false,
       // Sync
       lastSyncedAt: null,
+      // Recently updated/added biomarkers
+      recentlyUpdatedBiomarkers: [],
+      recentlyAddedBiomarkers: [],
+      clearRecentBiomarkers: () => set({ recentlyUpdatedBiomarkers: [], recentlyAddedBiomarkers: [] }),
+      // Achievement unlock queue
+      pendingUnlockedAchievements: [],
+      dequeueUnlockedAchievement: () => set((state) => ({
+        pendingUnlockedAchievements: state.pendingUnlockedAchievements.slice(1),
+      })),
 
       setHasCompletedOnboarding: (val) => set({ hasCompletedOnboarding: val }),
       setUserName: (val) => set({ userName: val }),
@@ -137,13 +166,20 @@ export const useStore = create<UserState>()(
         const xpGain = isFirstExam ? XP_ACTIONS.first_exam : XP_ACTIONS.additional_exam;
 
         // Merge biomarkers: keep existing, update/add from new ones
+        // Normalize names for matching (trim whitespace, lowercase, strip accents for comparison)
+        const norm = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const merged = [...state.biomarkers];
+        const updatedNames: string[] = [];
+        const addedNames: string[] = [];
         for (const newBm of val) {
-          const idx = merged.findIndex(b => b.name.toLowerCase() === newBm.name.toLowerCase());
+          const newNorm = norm(newBm.name);
+          const idx = merged.findIndex(b => norm(b.name) === newNorm);
           if (idx >= 0) {
             merged[idx] = newBm; // Update existing biomarker with new value
+            updatedNames.push(newBm.name);
           } else {
             merged.push(newBm); // Add new biomarker
+            addedNames.push(newBm.name);
           }
         }
         const mergedScore = computeHealthScore(merged);
@@ -153,7 +189,7 @@ export const useStore = create<UserState>()(
         if (state.sessions.length > 0) {
           const prevBiomarkers = state.sessions[0].biomarkers;
           for (const b of val) {
-            const prev = prevBiomarkers.find(p => p.name.toLowerCase() === b.name.toLowerCase());
+            const prev = prevBiomarkers.find(p => norm(p.name) === norm(b.name));
             if (prev && prev.status !== 'normal' && b.status === 'normal') {
               improvedCount++;
             }
@@ -199,22 +235,42 @@ export const useStore = create<UserState>()(
           newAchievements.push('five_improved');
         }
 
+        // Diff to find which achievements are BRAND NEW this exam (for celebration modal)
+        const newlyUnlocked = newAchievements.filter(
+          (id) => !state.achievements.includes(id)
+        );
+
         set({
           biomarkers: merged,
           healthScore: mergedScore,
           sessions: [session, ...state.sessions],
           xp: state.xp + xpGain + improveXP,
           achievements: newAchievements,
+          recentlyUpdatedBiomarkers: updatedNames,
+          recentlyAddedBiomarkers: addedNames,
+          pendingUnlockedAchievements: [
+            ...state.pendingUnlockedAchievements,
+            ...newlyUnlocked,
+          ],
         });
+
+        // Fire-and-forget push so the new session, biomarkers, XP and unlocked
+        // achievements all land on the server. Skip for guests.
+        if (!state.isGuest) {
+          get().syncToCloud().catch((err) =>
+            console.warn('[Clyra] post-exam sync failed:', err),
+          );
+        }
       },
 
       setSessions: (sessions) => {
         // Rebuild merged biomarkers from all sessions (latest values win)
+        const norm = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
         const merged: Biomarker[] = [];
         // Process sessions from oldest to newest so latest values overwrite
         for (let i = sessions.length - 1; i >= 0; i--) {
           for (const bm of sessions[i].biomarkers) {
-            const idx = merged.findIndex(b => b.name.toLowerCase() === bm.name.toLowerCase());
+            const idx = merged.findIndex(b => norm(b.name) === norm(bm.name));
             if (idx >= 0) {
               merged[idx] = bm;
             } else {
@@ -233,29 +289,70 @@ export const useStore = create<UserState>()(
 
       unlockAchievement: (id) => set((state) => {
         if (state.achievements.includes(id)) return state;
-        return { achievements: [...state.achievements, id] };
-      }),
-
-      completeMission: (id) => set((state) => {
-        if (state.completedMissions.includes(id)) return state;
         return {
-          completedMissions: [...state.completedMissions, id],
-          xp: state.xp + 150,
+          achievements: [...state.achievements, id],
+          pendingUnlockedAchievements: [...state.pendingUnlockedAchievements, id],
         };
       }),
 
-      updateStreak: () => set((state) => {
+      completeMission: (id, type, xpOverride) => {
+        const state = get();
+        if (state.completedMissions.includes(id)) return;
+        const xpGain = xpOverride ?? 150;
+        // Optimistic local update
+        set({
+          completedMissions: [...state.completedMissions, id],
+          xp: state.xp + xpGain,
+          weeklyMissionCount:
+            type === 'weekly' ? state.weeklyMissionCount + 1 : state.weeklyMissionCount,
+        });
+        // Fire-and-forget server sync (skip for guest users)
+        if (!state.isGuest) {
+          recordMissionEvent(id, type, xpGain)
+            .then((res) => {
+              // Reconcile XP with server (handles clock drift / multi-device)
+              if (res) set({ xp: res.newXp });
+            })
+            .catch((err) => console.warn('[Clyra] recordMissionEvent failed:', err));
+        }
+      },
+
+      updateStreak: () => {
+        const state = get();
         const today = new Date().toISOString().split('T')[0];
-        if (state.lastActiveDate === today) return state;
+        // If a new day started since we last ran, clear today's daily-mission
+        // checklist — the server is still authoritative, this just hides stale
+        // checks until the next pull.
+        if (state.lastActiveDate !== today && state.completedMissions.length > 0) {
+          set({ completedMissions: [] });
+        }
+        if (state.lastActiveDate === today) return;
         const lastDate = state.lastActiveDate ? new Date(state.lastActiveDate) : null;
         const daysSinceLast = lastDate
           ? Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
           : 999;
-        return {
+        const newActiveWeeks = daysSinceLast <= 7 ? state.activeWeeks + 1 : 1;
+        set({
           lastActiveDate: today,
-          activeWeeks: daysSinceLast <= 7 ? state.activeWeeks + 1 : 1,
-        };
-      }),
+          activeWeeks: newActiveWeeks,
+        });
+        // Push to server so streak survives app reinstall / device change.
+        if (!state.isGuest) {
+          updateProfile({
+            last_active_date: today,
+            active_weeks: newActiveWeeks,
+          }).catch((err) => console.warn('[Clyra] updateStreak sync failed:', err));
+        }
+      },
+
+      refreshWeeklyMissionCount: async () => {
+        try {
+          const count = await getWeeklyMissionCount('weekly');
+          set({ weeklyMissionCount: count });
+        } catch (err) {
+          console.warn('[Clyra] refreshWeeklyMissionCount failed:', err);
+        }
+      },
 
       setTestReminderDays: (days) => set({ testReminderDays: days }),
 
@@ -291,7 +388,6 @@ export const useStore = create<UserState>()(
             xp: state.xp,
             activeWeeks: state.activeWeeks,
             lastActiveDate: state.lastActiveDate,
-            completedMissions: state.completedMissions,
             sessions: state.sessions,
             achievements: state.achievements,
           });
@@ -305,6 +401,8 @@ export const useStore = create<UserState>()(
         try {
           const cloudData = await pullCloudToLocal();
           if (!cloudData) return;
+          // Fetch current-week count in parallel with the main pull.
+          const weeklyCount = await getWeeklyMissionCount('weekly').catch(() => 0);
           set({
             userName: cloudData.userName,
             age: cloudData.age,
@@ -316,7 +414,8 @@ export const useStore = create<UserState>()(
             xp: cloudData.xp,
             activeWeeks: cloudData.activeWeeks,
             lastActiveDate: cloudData.lastActiveDate,
-            completedMissions: cloudData.completedMissions,
+            completedMissions: cloudData.todayCompletedMissions,
+            weeklyMissionCount: weeklyCount,
             sessions: cloudData.sessions,
             achievements: cloudData.achievements,
             isPro: cloudData.isPro,
@@ -371,6 +470,7 @@ export const useStore = create<UserState>()(
         xp: 0,
         achievements: [],
         completedMissions: [],
+        weeklyMissionCount: 0,
         isPro: false,
         subscriptionPlan: null,
         subscriptionExpiresAt: null,

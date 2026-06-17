@@ -19,6 +19,7 @@ import {
   getBiomarkerKnowledge, getStatusMessage, getRetestStatus,
 } from '../../constants/biomarkerKnowledge';
 import { translateBiomarkerValue } from '../../constants/valueTranslations';
+import { parseBiomarkerNumber } from '../../constants/valueParsing';
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -88,7 +89,7 @@ function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language, 
   const timeStr = new Date(date).toLocaleDateString(language === 'es' ? 'es' : 'en', { month: 'long', year: 'numeric' });
 
   // Calculate proportional bar width relative to all history values
-  const numericVal = parseFloat(String(value));
+  const numericVal = parseBiomarkerNumber(value);
   const maxVal = Math.max(...allValues);
   const barPercent = !isNaN(numericVal) && maxVal > 0
     ? Math.min(Math.max((numericVal / maxVal) * 100, 15), 100)
@@ -198,7 +199,7 @@ function detectAgingVelocity(
 
   // history[0] = newest, so we need chronological order (oldest first)
   const chronological = [...history].reverse();
-  const values = chronological.map(h => parseFloat(String(h.biomarker.value)));
+  const values = chronological.map(h => parseBiomarkerNumber(h.biomarker.value));
   const statuses = chronological.map(h => h.biomarker.status);
 
   // All values must be parseable
@@ -411,8 +412,8 @@ export default function BiomarkerDetailScreen() {
     })
     .filter(Boolean) as { date: string; biomarker: Biomarker }[];
 
-  const currentNumeric = parseFloat(String(biomarkerData.value));
-  const previousNumeric = history[1] ? parseFloat(String(history[1].biomarker.value)) : null;
+  const currentNumeric = parseBiomarkerNumber(biomarkerData.value);
+  const previousNumeric = history[1] ? parseBiomarkerNumber(history[1].biomarker.value) : null;
   const lastTestDate = history[0]?.date ?? null;
 
   const plainMessage = getStatusMessage(decodedName, biomarkerData.status, language);
@@ -561,7 +562,7 @@ export default function BiomarkerDetailScreen() {
 
             <View style={styles.timeline}>
               {(() => {
-                const allValues = history.map(h => parseFloat(String(h.biomarker.value))).filter(n => !isNaN(n));
+                const allValues = history.map(h => parseBiomarkerNumber(h.biomarker.value)).filter(n => !isNaN(n));
                 return history.map(({ date, biomarker }, i) => (
                   <TimelineRow
                     key={date + i}

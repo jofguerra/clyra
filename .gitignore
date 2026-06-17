@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Reference design project (separate git repo, not part of Clyra)
+Design Reference/
+
+# Redundant asset archive (the unzipped copy is versioned)
+Animations and Assets/*.zip
+
+# Local env example also keep ignored
+.env

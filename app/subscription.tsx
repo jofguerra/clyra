@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert,
+  TouchableOpacity, Alert, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -12,6 +12,8 @@ import { Colors } from '../constants/colors';
 import { Typography } from '../constants/typography';
 import { useStore } from '../hooks/useStore';
 import { useT } from '../hooks/useT';
+import { PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL } from '../constants/appConfig';
+import Mascot from '../components/Mascot';
 
 const MONTHLY_PRICE = '$7.99';
 const ANNUAL_PRICE = '$49.99';
@@ -107,8 +109,8 @@ export default function SubscriptionScreen() {
       >
         {/* Hero */}
         <View style={styles.heroSection}>
-          <View style={styles.heroIcon}>
-            <Crown size={44} color={Colors.gold} />
+          <View style={styles.heroMascot}>
+            <Mascot pose="flexing" size={160} animation="idle-breath" />
           </View>
           <Text style={styles.headline}>{t('subHeadline')}</Text>
           <Text style={styles.subtitle}>{t('subSubtitle')}</Text>
@@ -214,11 +216,11 @@ export default function SubscriptionScreen() {
             <Text style={styles.linkText}>{t('subRestore')}</Text>
           </TouchableOpacity>
           <Text style={styles.linkDot}>·</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}>
             <Text style={styles.linkText}>{t('subTerms')}</Text>
           </TouchableOpacity>
           <Text style={styles.linkDot}>·</Text>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
             <Text style={styles.linkText}>{t('subPrivacy')}</Text>
           </TouchableOpacity>
         </View>
@@ -247,6 +249,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.gold + '15',
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 20,
+  },
+  heroMascot: {
+    marginBottom: 16,
   },
   headline: {
     fontFamily: Typography.families.display,

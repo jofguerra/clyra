@@ -1,6 +1,6 @@
 import { Biomarker } from '../services/openai';
 
-export type SystemStatus = 'normal' | 'borderline' | 'attention' | 'none';
+export type SystemStatus = 'normal' | 'low' | 'borderline' | 'attention' | 'none';
 
 interface BilingualText { en: string; es: string; }
 
@@ -304,8 +304,9 @@ function nameMatch(biomarkerName: string, systemNames: string[]): boolean {
 export function getSystemStatus(system: BodySystem, biomarkers: Biomarker[]): SystemStatus {
   const matches = biomarkers.filter(b => nameMatch(b.name, system.biomarkerNames));
   if (matches.length === 0) return 'none';
-  if (matches.some(b => b.status === 'high' || b.status === 'low')) return 'attention';
+  if (matches.some(b => b.status === 'high')) return 'attention';
   if (matches.some(b => b.status === 'borderline')) return 'borderline';
+  if (matches.some(b => b.status === 'low')) return 'low';
   return 'normal';
 }
 

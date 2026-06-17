@@ -4,10 +4,12 @@ import {
   TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { Send, Bot, User, ScanLine } from 'lucide-react-native';
+import { Send, User, ScanLine } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import AppHeader from '../../components/AppHeader';
+// import AppHeader from '../../components/AppHeader';
 import ProGate from '../../components/ProGate';
+import Mascot from '../../components/Mascot';
+import MascotBubble from '../../components/MascotBubble';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import { useStore } from '../../hooks/useStore';
@@ -29,8 +31,8 @@ function MessageBubble({ item }: { item: DisplayMessage }) {
   return (
     <View style={[styles.messageWrapper, isAi ? styles.messageWrapperAi : styles.messageWrapperUser]}>
       {isAi && (
-        <View style={[styles.avatar, styles.avatarAi]}>
-          <Bot size={16} color={Colors.primary} />
+        <View style={styles.mascotAvatar}>
+          <Mascot pose="default" size={40} animation="idle-breath" />
         </View>
       )}
       <View style={[styles.bubble, isAi ? styles.bubbleAi : styles.bubbleUser]}>
@@ -52,8 +54,8 @@ function MessageBubble({ item }: { item: DisplayMessage }) {
 function TypingBubble({ label }: { label: string }) {
   return (
     <View style={[styles.messageWrapper, styles.messageWrapperAi]}>
-      <View style={[styles.avatar, styles.avatarAi]}>
-        <Bot size={16} color={Colors.primary} />
+      <View style={styles.mascotAvatar}>
+        <Mascot pose="thinking" size={40} animation="thinking-tilt" />
       </View>
       <View style={[styles.bubble, styles.bubbleAi, styles.typingBubble]}>
         <ActivityIndicator size="small" color={Colors.primary} style={{ marginRight: 8 }} />
@@ -157,7 +159,6 @@ export default function ChatScreen() {
   if (!isPro && hasBiomarkers) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <AppHeader title={t('chatTitle')} />
         <ProGate feature={language === 'es' ? 'Chat de Salud con IA' : 'AI Health Chat'} />
       </SafeAreaView>
     );
@@ -165,8 +166,6 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <AppHeader title={t('chatTitle')} />
-
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -204,14 +203,25 @@ export default function ChatScreen() {
 
           {/* No data CTA */}
           {!hasBiomarkers && (
-            <TouchableOpacity
-              style={styles.noDataCTA}
-              onPress={() => router.push('/(tabs)/upload')}
-              activeOpacity={0.85}
-            >
-              <ScanLine size={16} color={Colors.primary} />
-              <Text style={styles.noDataCTAText}>{t('uploadResults')}</Text>
-            </TouchableOpacity>
+            <View style={styles.noDataBlock}>
+              <MascotBubble
+                pose="pointing"
+                animation="idle-breath"
+                size={72}
+                layout="row"
+                message={language === 'es'
+                  ? '!Sube tu primer examen y charlamos!'
+                  : 'Upload your first test and we can chat!'}
+              />
+              <TouchableOpacity
+                style={styles.noDataCTA}
+                onPress={() => router.push('/(tabs)/upload')}
+                activeOpacity={0.85}
+              >
+                <ScanLine size={16} color={Colors.primary} />
+                <Text style={styles.noDataCTAText}>{t('uploadResults')}</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           <View style={styles.inputRow}>
@@ -266,6 +276,9 @@ const styles = StyleSheet.create({
   },
   avatarAi: { backgroundColor: Colors.primary10, marginRight: 8 },
   avatarUser: { backgroundColor: Colors.secondary, marginLeft: 8 },
+  mascotAvatar: {
+    width: 40, height: 40, marginRight: 8, marginBottom: -4,
+  },
   bubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18 },
   bubbleAi: {
     backgroundColor: '#fff',
@@ -309,9 +322,11 @@ const styles = StyleSheet.create({
   },
 
   // No data CTA
+  noDataBlock: {
+    paddingHorizontal: 16, marginBottom: 10, gap: 10,
+  },
   noDataCTA: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    marginHorizontal: 16, marginBottom: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: Colors.primary10, borderRadius: 14, padding: 12,
     borderWidth: 1, borderColor: Colors.primary + '25',
   },

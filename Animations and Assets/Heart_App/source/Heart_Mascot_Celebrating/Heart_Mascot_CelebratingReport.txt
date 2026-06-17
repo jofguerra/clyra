@@ -1,0 +1,20 @@
+Report created: 
+	29/4/2026	17:33:15
+
+Project name: Heart_Mascot_Celebrating.aep
+
+Source files collected to: 
+	C:\Users\andre\Desktop\00 FIVEER\000 TRABAJOS 2026\03 HEART APP\source\Heart_Mascot_Celebrating
+
+Source files collected: None
+
+Collected comps:  
+	Heart_Mascot_Celebrating
+	
+Number of collected files:  0
+
+Size of collected files:  0 KB
+
+Rendering plug-ins:
+	Classic 3D
+	

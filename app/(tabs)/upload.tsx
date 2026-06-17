@@ -1,21 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  ActivityIndicator, ScrollView, Alert, Animated,
+  ActivityIndicator, ScrollView, Alert, Animated, Easing,
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { useRouter } from 'expo-router';
 import { Plus, FileText, CircleCheck, ChevronRight, Upload, Camera, Keyboard, FlaskConical, Check, Search, Sparkles, CheckCircle, Image } from 'lucide-react-native';
+import { Motion, SPRING_PLAYFUL } from '../../constants/motion';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { extractLabResultsFromPDF, extractLabResultsFromImage } from '../../services/openai';
 import { useStore } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
-import AppHeader from '../../components/AppHeader';
+// AppHeader removed — cleaner look without top bar
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import type { TranslationKey } from '../../constants/i18n';
 import { BODY_SYSTEMS, getSystemBiomarkers, SAMPLE_TYPE_EMOJI } from '../../constants/biomarkerSystems';
 import CoverageMap from '../../components/CoverageMap';
+import Mascot from '../../components/Mascot';
 
 type UploadState = 'list' | 'choose' | 'uploading' | 'processing' | 'done';
 
@@ -73,14 +76,20 @@ function AnalysisProgress({ t }: { t: (k: TranslationKey) => string }) {
 
     return (
         <View style={analysisStyles.container}>
-            <Animated.View style={[analysisStyles.content, { opacity: fadeAnim }]}>
-                <View style={analysisStyles.iconCircle}>
-                    <CurrentIcon size={32} color={Colors.primary} />
-                </View>
-                <Text style={analysisStyles.stepText}>{t(currentStep.key)}</Text>
-            </Animated.View>
+            {/* Single focal point — Clipboard-Reading mascot conveys "analyzing" */}
+            <View style={analysisStyles.mascotWrap}>
+                <Mascot
+                    pose="clipboardReading"
+                    size={200}
+                    animation="thinking-tilt"
+                />
+            </View>
 
-            {/* Progress dots */}
+            <Animated.Text style={[analysisStyles.stepText, { opacity: fadeAnim }]}>
+                {t(currentStep.key)}
+            </Animated.Text>
+
+            {/* Progress dots — show which phase we're in */}
             <View style={analysisStyles.dotsRow}>
                 {ANALYSIS_STEPS.map((_, i) => (
                     <View
@@ -93,12 +102,138 @@ function AnalysisProgress({ t }: { t: (k: TranslationKey) => string }) {
                 ))}
             </View>
 
-            {/* Pulsing indicator */}
-            <Animated.View style={{ opacity: Animated.add(0.4, Animated.multiply(dotAnim, 0.6)) }}>
-                <ActivityIndicator size="small" color={Colors.primary} style={{ marginTop: 24 }} />
+            <Text style={analysisStyles.subtitle}>{t('dontClose')}</Text>
+        </View>
+    );
+}
+
+// ─── Success Celebration (upload done) ──────────────────────────────────────
+// Emotional Intent: Joy, accomplishment (the user JUST uploaded their first data!)
+// Narrative: Icon pops in → count-up reveals marker count → CTA slides up
+// Motion layers: Primary (icon pop) + Secondary (number count) + Ambient (card fade)
+
+function SuccessCelebration({
+    markerCount, t, onContinue, showSignupPrompt, onSignup,
+}: {
+    markerCount: number;
+    t: (k: TranslationKey, vars?: Record<string, string | number>) => string;
+    onContinue: () => void;
+    showSignupPrompt: boolean;
+    onSignup: () => void;
+}) {
+    // Primary: icon scale pop (0 → 1.15 → 1 via spring)
+    const iconScale = useRef(new Animated.Value(0)).current;
+    // Secondary: number count-up
+    const countAnim = useRef(new Animated.Value(0)).current;
+    const [displayCount, setDisplayCount] = useState(0);
+    // Title fade-in (staggered after icon)
+    const titleOpacity = useRef(new Animated.Value(0)).current;
+    const titleY = useRef(new Animated.Value(12)).current;
+    // CTA slide up from bottom
+    const ctaOpacity = useRef(new Animated.Value(0)).current;
+    const ctaY = useRef(new Animated.Value(30)).current;
+    // Signup card (only if shown) — final element
+    const signupOpacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        // Count-up listener
+        const listener = countAnim.addListener(({ value }) => {
+            setDisplayCount(Math.round(value));
+        });
+
+        // Choreographed entrance: hero icon first, then number, then title, then CTA
+        Animated.sequence([
+            // 1. Icon pops in with spring bounce
+            Animated.spring(iconScale, {
+                toValue: 1,
+                damping: 10,
+                mass: 0.7,
+                stiffness: 200,
+                useNativeDriver: true,
+            }),
+            // 2. Number counts up (theatrical reveal)
+            Animated.parallel([
+                Animated.timing(countAnim, {
+                    toValue: markerCount,
+                    duration: Motion.duration.theatrical,
+                    easing: Motion.easing.decelerate,
+                    useNativeDriver: false,
+                }),
+                Animated.timing(titleOpacity, {
+                    toValue: 1,
+                    duration: Motion.duration.standard,
+                    easing: Motion.easing.decelerate,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(titleY, {
+                    toValue: 0,
+                    duration: Motion.duration.standard,
+                    easing: Motion.easing.decelerate,
+                    useNativeDriver: true,
+                }),
+            ]),
+            // 3. CTA button slides up with fade
+            Animated.parallel([
+                Animated.timing(ctaOpacity, {
+                    toValue: 1,
+                    duration: Motion.duration.standard,
+                    easing: Motion.easing.decelerate,
+                    useNativeDriver: true,
+                }),
+                Animated.spring(ctaY, {
+                    toValue: 0,
+                    ...SPRING_PLAYFUL,
+                }),
+            ]),
+            // 4. Signup prompt (if shown) fades in last
+            Animated.timing(signupOpacity, {
+                toValue: 1,
+                duration: Motion.duration.standard,
+                easing: Motion.easing.decelerate,
+                useNativeDriver: true,
+            }),
+        ]).start();
+
+        return () => countAnim.removeListener(listener);
+    }, []);
+
+    return (
+        <View style={styles.center}>
+            {/* Primary — celebrating mascot pops in with spring */}
+            <Animated.View style={[styles.doneIcon, { transform: [{ scale: iconScale }] }]}>
+                <Mascot pose="celebrating" size={160} animation="celebrate-bounce" />
             </Animated.View>
 
-            <Text style={analysisStyles.subtitle}>{t('dontClose')}</Text>
+            {/* Title + secondary count-up */}
+            <Animated.View style={{ opacity: titleOpacity, transform: [{ translateY: titleY }], alignItems: 'center' }}>
+                <Text style={styles.doneTitle}>{t('analysisDone')}</Text>
+                <Text style={styles.doneSub}>{t('foundMarkers', { n: displayCount })}</Text>
+            </Animated.View>
+
+            {/* CTA — slides up */}
+            <Animated.View style={{ opacity: ctaOpacity, transform: [{ translateY: ctaY }], width: '100%', alignItems: 'center' }}>
+                <TouchableOpacity
+                    style={styles.doneBtn}
+                    onPress={onContinue}
+                    activeOpacity={0.85}
+                >
+                    <Text style={styles.doneBtnText}>{t('viewResults')}</Text>
+                </TouchableOpacity>
+            </Animated.View>
+
+            {/* Signup prompt (guest first-timer) */}
+            {showSignupPrompt && (
+                <Animated.View style={[styles.signupPromptCard, { opacity: signupOpacity }]}>
+                    <Text style={styles.signupPromptText}>{t('createAccountPrompt')}</Text>
+                    <TouchableOpacity
+                        style={styles.signupPromptBtn}
+                        onPress={onSignup}
+                        activeOpacity={0.85}
+                    >
+                        <Text style={styles.signupPromptBtnText}>{t('authCreateAccount')}</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            )}
         </View>
     );
 }
@@ -110,24 +245,21 @@ const analysisStyles = StyleSheet.create({
         justifyContent: 'center',
         padding: 32,
     },
-    content: {
-        alignItems: 'center',
+    lottie: {
+        width: 200,
+        height: 200,
+        marginBottom: 24,
     },
-    iconCircle: {
-        width: 72,
-        height: 72,
-        borderRadius: 36,
-        backgroundColor: Colors.primary10,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 20,
+    mascotWrap: {
+        marginBottom: 24,
     },
     stepText: {
         fontFamily: Typography.families.display,
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: '700',
         color: Colors.foreground,
         textAlign: 'center',
+        letterSpacing: -0.3,
     },
     dotsRow: {
         flexDirection: 'row',
@@ -196,7 +328,16 @@ export default function TestsScreen() {
                 setLastUploadCount(data.length);
                 setState('done');
             } catch (err: any) {
-                Alert.alert('Error', err.message?.slice(0, 200) ?? 'Could not extract data');
+                const msg = err.message ?? '';
+                const userMsg = msg.includes('Bad Gateway') || msg.includes('502')
+                    ? (language === 'es' ? 'El servidor no está disponible ahora. Intenta de nuevo en unos minutos.' : 'The server is temporarily unavailable. Please try again in a few minutes.')
+                    : msg.includes('timeout') || msg.includes('Timeout')
+                    ? (language === 'es' ? 'La solicitud tardó demasiado. Intenta con un archivo más pequeño.' : 'The request timed out. Try with a smaller file.')
+                    : msg.slice(0, 200) || (language === 'es' ? 'No se pudieron extraer los datos' : 'Could not extract data');
+                Alert.alert(
+                    language === 'es' ? '!Uy! Algo salio mal' : 'Oh no — something went wrong',
+                    userMsg,
+                );
                 setState('list');
             }
         }, 400);
@@ -267,7 +408,16 @@ export default function TestsScreen() {
                 setLastUploadCount(data.length);
                 setState('done');
             } catch (err: any) {
-                Alert.alert('Error', err.message?.slice(0, 200) ?? 'Could not extract data from image');
+                const msg = err.message ?? '';
+                const userMsg = msg.includes('Bad Gateway') || msg.includes('502')
+                    ? (language === 'es' ? 'El servidor no está disponible ahora. Intenta de nuevo en unos minutos.' : 'The server is temporarily unavailable. Please try again in a few minutes.')
+                    : msg.includes('timeout') || msg.includes('Timeout')
+                    ? (language === 'es' ? 'La solicitud tardó demasiado. Intenta de nuevo.' : 'The request timed out. Please try again.')
+                    : msg.slice(0, 200) || (language === 'es' ? 'No se pudieron extraer los datos' : 'Could not extract data from image');
+                Alert.alert(
+                    language === 'es' ? '!Uy! Algo salio mal' : 'Oh no — something went wrong',
+                    userMsg,
+                );
                 setState('list');
             }
         }, 400);
@@ -319,13 +469,6 @@ export default function TestsScreen() {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
-    function scoreColor(score: number) {
-        if (score >= 80) return Colors.optimal;
-        if (score >= 65) return Colors.optimal;
-        if (score >= 50) return Colors.borderline;
-        return Colors.attention;
-    }
-
     function formatDate(iso: string) {
         return new Date(iso).toLocaleDateString(language === 'es' ? 'es' : 'en', {
             day: 'numeric', month: 'short', year: 'numeric',
@@ -336,47 +479,29 @@ export default function TestsScreen() {
 
     if (state === 'uploading' || state === 'processing') return (
         <SafeAreaView style={styles.safeArea}>
-            <AppHeader title={t('testsTitle')} />
+            {/* Title in-page */}
+            <Text style={styles.pageTitle}>{t('testsTitle')}</Text>
             <AnalysisProgress t={t} />
         </SafeAreaView>
     );
 
     if (state === 'done') return (
         <SafeAreaView style={styles.safeArea}>
-            <AppHeader title={t('testsTitle')} />
-            <View style={styles.center}>
-                <View style={styles.doneIcon}>
-                    <CircleCheck size={56} color={Colors.optimal} />
-                </View>
-                <Text style={styles.doneTitle}>{t('analysisDone')}</Text>
-                <Text style={styles.doneSub}>{t('foundMarkers', { n: lastUploadCount })}</Text>
-                <TouchableOpacity
-                    style={styles.doneBtn}
-                    onPress={() => { setState('list'); router.push('/(tabs)'); }}
-                    activeOpacity={0.85}
-                >
-                    <Text style={styles.doneBtnText}>{t('viewResults')}</Text>
-                </TouchableOpacity>
-
-                {isGuest && sessions.length === 1 && (
-                    <View style={styles.signupPromptCard}>
-                        <Text style={styles.signupPromptText}>{t('createAccountPrompt')}</Text>
-                        <TouchableOpacity
-                            style={styles.signupPromptBtn}
-                            onPress={() => { setState('list'); router.push('/onboarding/auth'); }}
-                            activeOpacity={0.85}
-                        >
-                            <Text style={styles.signupPromptBtnText}>{t('authCreateAccount')}</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-            </View>
+            {/* Title in-page */}
+            <Text style={styles.pageTitle}>{t('testsTitle')}</Text>
+            <SuccessCelebration
+                markerCount={lastUploadCount}
+                t={t}
+                onContinue={() => { setState('list'); router.push('/(tabs)'); }}
+                showSignupPrompt={isGuest && sessions.length === 1}
+                onSignup={() => { setState('list'); router.push('/onboarding/auth'); }}
+            />
         </SafeAreaView>
     );
 
     if (state === 'choose') return (
         <SafeAreaView style={styles.safeArea}>
-            <AppHeader title={t('addTest')} />
+            <Text style={styles.pageTitle}>{t('addTest')}</Text>
             <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
                 <Text style={styles.chooseSubtitle}>{t('uploadSubtitle')}</Text>
 
@@ -454,7 +579,8 @@ export default function TestsScreen() {
     // ── Main list view ────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.safeArea}>
-            <AppHeader title={t('testsTitle')} />
+            {/* Title in-page */}
+            <Text style={styles.pageTitle}>{t('testsTitle')}</Text>
             <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
                 {/* ── Test History ── */}
@@ -462,8 +588,8 @@ export default function TestsScreen() {
                     <View style={styles.historySection}>
                         <Text style={styles.historyHeader}>{t('uploadHistory')}</Text>
                         {sessions.map((session, i) => {
-                            const sc = scoreColor(session.healthScore);
                             const att = session.biomarkers.filter(b => b.status !== 'normal').length;
+                            const normal = session.biomarkers.length - att;
                             return (
                                 <TouchableOpacity
                                     key={session.id}
@@ -471,19 +597,21 @@ export default function TestsScreen() {
                                     activeOpacity={0.8}
                                     onPress={() => router.push(`/test/${session.id}` as any)}
                                 >
-                                    <View style={[styles.scoreBadge, { backgroundColor: sc + '15' }]}>
-                                        <Text style={[styles.scoreBadgeText, { color: sc }]}>
-                                            {session.healthScore}
-                                        </Text>
+                                    <View style={[styles.testIconBadge, { backgroundColor: att > 0 ? Colors.borderline10 : Colors.optimal10 }]}>
+                                        <FlaskConical size={20} color={att > 0 ? Colors.borderline : Colors.optimal} />
                                     </View>
                                     <View style={styles.testInfo}>
                                         <Text style={styles.testLabel}>{session.label}</Text>
                                         <Text style={styles.testMeta}>
                                             {formatDate(session.date)} · {session.biomarkers.length} {language === 'es' ? 'marcadores' : 'markers'}
                                         </Text>
-                                        {att > 0 && (
+                                        {att > 0 ? (
                                             <Text style={styles.testAlert}>
                                                 {att} {language === 'es' ? 'fuera de rango' : 'out of range'}
+                                            </Text>
+                                        ) : (
+                                            <Text style={styles.testAllGood}>
+                                                {language === 'es' ? 'Todo en rango ✓' : 'All in range ✓'}
                                             </Text>
                                         )}
                                     </View>
@@ -582,8 +710,14 @@ export default function TestsScreen() {
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: Colors.background },
     scroll: { flex: 1 },
-    content: { padding: 20, paddingBottom: 100 },
+    content: { padding: 20, paddingBottom: 130 },
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+    pageTitle: {
+        fontFamily: Typography.families.display,
+        fontSize: 20, fontWeight: '800', color: Colors.foreground,
+        paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6,
+        letterSpacing: -0.3,
+    },
 
     // Add button
     addBtn: {
@@ -746,13 +880,9 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
     },
-    scoreBadge: {
-        width: 52, height: 52, borderRadius: 16,
+    testIconBadge: {
+        width: 48, height: 48, borderRadius: 14,
         alignItems: 'center', justifyContent: 'center',
-    },
-    scoreBadgeText: {
-        fontFamily: Typography.families.display,
-        fontSize: 20, fontWeight: '800',
     },
     testInfo: { flex: 1 },
     testLabel: {
@@ -766,6 +896,10 @@ const styles = StyleSheet.create({
     testAlert: {
         fontFamily: Typography.families.body,
         fontSize: 11, color: Colors.attention, fontWeight: '600', marginTop: 3,
+    },
+    testAllGood: {
+        fontFamily: Typography.families.body,
+        fontSize: 11, color: Colors.optimal, fontWeight: '600', marginTop: 3,
     },
 
     // Loading states

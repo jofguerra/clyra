@@ -3048,6 +3048,118 @@ const K: Record<string, BiomarkerKnowledge> = {
     sampleType: 'urine',
     reviewEveryMonths: 12,
   },
+
+  // ── Hormones ────────────────────────────────────────────────────────────────
+  'fsh': {
+    simpleName: { en: 'FSH (Fertility Hormone)', es: 'FSH (Hormona de Fertilidad)' },
+    emoji: '🧬',
+    whatItMeasures: {
+      en: 'Follicle-stimulating hormone — regulates reproductive processes',
+      es: 'Hormona foliculoestimulante — regula procesos reproductivos',
+    },
+    messages: {
+      normal: { en: 'Your FSH is in a healthy range.', es: 'Tu FSH está en rango saludable.' },
+      borderline: { en: 'Your FSH is slightly off — may be worth monitoring.', es: 'Tu FSH está ligeramente alterada — vale la pena monitorear.' },
+      high: { en: 'Elevated FSH can indicate reduced ovarian/testicular function.', es: 'FSH elevada puede indicar función ovárica/testicular reducida.' },
+      low: { en: 'Low FSH may affect fertility — discuss with your doctor.', es: 'FSH baja puede afectar la fertilidad — consulta a tu médico.' },
+    },
+    whyItMatters: { en: 'FSH is key for fertility and reproductive health assessment.', es: 'La FSH es clave para evaluar la fertilidad y salud reproductiva.' },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'lh': {
+    simpleName: { en: 'LH (Luteinizing Hormone)', es: 'LH (Hormona Luteinizante)' },
+    emoji: '🧬',
+    whatItMeasures: {
+      en: 'Luteinizing hormone — triggers ovulation and testosterone production',
+      es: 'Hormona luteinizante — desencadena ovulación y producción de testosterona',
+    },
+    messages: {
+      normal: { en: 'Your LH is in a healthy range.', es: 'Tu LH está en rango saludable.' },
+      borderline: { en: 'Your LH is slightly off — monitor over time.', es: 'Tu LH está ligeramente alterada — monitorea con el tiempo.' },
+      high: { en: 'Elevated LH may indicate hormonal imbalance.', es: 'LH elevada puede indicar desequilibrio hormonal.' },
+      low: { en: 'Low LH may affect reproductive function.', es: 'LH baja puede afectar la función reproductiva.' },
+    },
+    whyItMatters: { en: 'LH works with FSH to regulate the reproductive system.', es: 'La LH trabaja con la FSH para regular el sistema reproductivo.' },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'prolactina': {
+    simpleName: { en: 'Prolactin', es: 'Prolactina' },
+    emoji: '🧬',
+    whatItMeasures: {
+      en: 'A pituitary hormone involved in breast milk production and hormonal balance',
+      es: 'Hormona pituitaria involucrada en la producción de leche y equilibrio hormonal',
+    },
+    messages: {
+      normal: { en: 'Your prolactin is normal.', es: 'Tu prolactina está normal.' },
+      borderline: { en: 'Slightly elevated prolactin — stress or medications may be a factor.', es: 'Prolactina ligeramente elevada — el estrés o medicamentos pueden ser un factor.' },
+      high: { en: 'High prolactin can affect menstrual cycles and fertility — see your doctor.', es: 'Prolactina alta puede afectar ciclos menstruales y fertilidad — consulta a tu médico.' },
+      low: { en: 'Low prolactin is usually not concerning.', es: 'Prolactina baja generalmente no es preocupante.' },
+    },
+    whyItMatters: { en: 'Abnormal prolactin can signal pituitary issues or hormonal imbalances.', es: 'Prolactina anormal puede señalar problemas pituitarios o desequilibrios hormonales.' },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'homocisteína': {
+    simpleName: { en: 'Homocysteine', es: 'Homocisteína' },
+    emoji: '❤️',
+    whatItMeasures: {
+      en: 'An amino acid linked to heart disease risk when elevated',
+      es: 'Un aminoácido asociado con riesgo cardiovascular cuando está elevado',
+    },
+    messages: {
+      normal: { en: 'Your homocysteine is in a healthy range.', es: 'Tu homocisteína está en rango saludable.' },
+      borderline: { en: 'Slightly elevated — consider B vitamins (B6, B12, folate).', es: 'Ligeramente elevada — considera vitaminas B (B6, B12, folato).' },
+      high: { en: 'High homocysteine increases cardiovascular risk — talk to your doctor.', es: 'Homocisteína alta aumenta el riesgo cardiovascular — habla con tu médico.' },
+      low: { en: 'Low homocysteine is generally fine.', es: 'Homocisteína baja generalmente está bien.' },
+    },
+    whyItMatters: { en: 'Elevated homocysteine is an independent risk factor for heart disease and stroke.', es: 'La homocisteína elevada es un factor de riesgo independiente para enfermedad cardíaca y ACV.' },
+    optimalRange: { general: { min: 5, max: 15 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'zinc': {
+    simpleName: { en: 'Zinc', es: 'Zinc' },
+    emoji: '⚡',
+    whatItMeasures: {
+      en: 'An essential mineral for immunity, wound healing, and metabolism',
+      es: 'Mineral esencial para inmunidad, cicatrización y metabolismo',
+    },
+    messages: {
+      normal: { en: 'Your zinc levels are good.', es: 'Tus niveles de zinc están bien.' },
+      borderline: { en: 'Zinc is slightly low — nuts, seeds, and red meat can help.', es: 'El zinc está ligeramente bajo — nueces, semillas y carnes rojas pueden ayudar.' },
+      high: { en: 'Zinc is elevated — excessive supplementation may be the cause.', es: 'El zinc está elevado — la suplementación excesiva puede ser la causa.' },
+      low: { en: 'Low zinc can weaken immunity and slow healing — consider supplementation.', es: 'El zinc bajo puede debilitar la inmunidad — considera suplementación.' },
+    },
+    whyItMatters: { en: 'Zinc supports over 300 enzymes in your body and is vital for immune function.', es: 'El zinc apoya más de 300 enzimas y es vital para la función inmune.' },
+    foodsToEat: { en: 'oysters, beef, pumpkin seeds, chickpeas', es: 'ostras, carne de res, semillas de calabaza, garbanzos' },
+    optimalRange: { general: { min: 60, max: 120 } },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
+
+  'dhea': {
+    simpleName: { en: 'DHEA', es: 'DHEA' },
+    emoji: '🧬',
+    whatItMeasures: {
+      en: 'A precursor hormone produced by the adrenal glands',
+      es: 'Hormona precursora producida por las glándulas suprarrenales',
+    },
+    messages: {
+      normal: { en: 'Your DHEA is in a healthy range.', es: 'Tu DHEA está en rango saludable.' },
+      borderline: { en: 'DHEA is slightly off — stress management may help.', es: 'DHEA está ligeramente alterada — manejo del estrés puede ayudar.' },
+      high: { en: 'Elevated DHEA can indicate adrenal overactivity.', es: 'DHEA elevada puede indicar hiperactividad suprarrenal.' },
+      low: { en: 'Low DHEA may indicate adrenal fatigue or aging.', es: 'DHEA baja puede indicar fatiga suprarrenal o envejecimiento.' },
+    },
+    whyItMatters: { en: 'DHEA is converted into sex hormones and declines naturally with age.', es: 'La DHEA se convierte en hormonas sexuales y disminuye naturalmente con la edad.' },
+    sampleType: 'blood',
+    reviewEveryMonths: 12,
+  },
 };
 
 // ── Alias map for AI-extracted names that may differ from keys ────────────────
@@ -3138,6 +3250,18 @@ const ALIASES: Record<string, string> = {
   'prostate specific antigen': 'psa total',
   'free psa':                'psa libre',
   'psa free':                'psa libre',
+  // Hormones
+  'follicle-stimulating hormone': 'fsh',
+  'follicle stimulating hormone': 'fsh',
+  'hormona foliculoestimulante': 'fsh',
+  'luteinizing hormone':     'lh',
+  'hormona luteinizante':    'lh',
+  'prolactin':               'prolactina',
+  'homocysteine':            'homocisteína',
+  'homocisteina':            'homocisteína',
+  'dehydroepiandrosterone':  'dhea',
+  'dhea-sulfate':            'dhea-s',
+  'dhea sulfato':            'dhea-s',
 };
 
 // ── Lookup helpers ────────────────────────────────────────────────────────────

@@ -57,7 +57,6 @@ export default function AuthScreen() {
                     xp: store.xp,
                     activeWeeks: store.activeWeeks,
                     lastActiveDate: store.lastActiveDate,
-                    completedMissions: store.completedMissions,
                     sessions: store.sessions,
                     achievements: store.achievements,
                 }).catch(() => {});
@@ -85,7 +84,6 @@ export default function AuthScreen() {
                     xp: store.xp,
                     activeWeeks: store.activeWeeks,
                     lastActiveDate: store.lastActiveDate,
-                    completedMissions: store.completedMissions,
                     sessions: store.sessions,
                     achievements: store.achievements,
                 }).catch(() => {});

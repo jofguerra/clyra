@@ -65,6 +65,7 @@ const SIDE: Record<string, 'left' | 'right'> = {
 
 const STATUS_COLOR: Record<SystemStatus, string> = {
   normal:     Colors.optimal,
+  low:        '#E879A2',
   borderline: Colors.borderline,
   attention:  Colors.attention,
   none:       '#9BAABF',
@@ -91,37 +92,58 @@ function PulseRing({ color }: { color: string }) {
 
 // ─── Small dot on body (no text) ─────────────────────────────────────────────
 
-function BodyDot({ system, status, selected, imgW, imgH, onPress }: {
+function BodyDot({ system, status, selected, imgW, imgH, onPress, staggerIndex = 0 }: {
   system: BodySystem; status: SystemStatus; selected: boolean;
-  imgW: number; imgH: number; onPress: () => void;
+  imgW: number; imgH: number; onPress: () => void; staggerIndex?: number;
 }) {
   const pos = SYSTEM_HOTSPOTS[system.id];
+  // Entrance animation — each dot pops in with spring-bounce, staggered
+  const entranceScale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(entranceScale, {
+      toValue: 1,
+      delay: 300 + staggerIndex * 80,
+      damping: 10,
+      mass: 0.6,
+      stiffness: 220,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   if (!pos) return null;
   const cx = (pos.xPct / 100) * imgW;
   const cy = (pos.yPct / 100) * imgH;
   const color = STATUS_COLOR[status];
   const shouldPulse = status === 'attention' || status === 'borderline';
+  const baseScale = selected ? 1.4 : 1;
   return (
-    <TouchableOpacity
-      activeOpacity={0.75}
-      onPress={onPress}
-      style={[styles.dot, {
+    <Animated.View
+      style={{
+        position: 'absolute',
         left: cx - DOT_R, top: cy - DOT_R,
-        width: DOT_R * 2, height: DOT_R * 2, borderRadius: DOT_R,
-        backgroundColor: color,
-        borderColor: selected ? 'white' : 'rgba(255,255,255,0.5)',
-        borderWidth: selected ? 2.5 : 1.5,
-        shadowColor: color, shadowOpacity: selected ? 0.8 : 0.4, shadowRadius: selected ? 8 : 3,
-        elevation: selected ? 8 : 3,
-        transform: [{ scale: selected ? 1.4 : 1 }],
-      }]}
+        transform: [{ scale: Animated.multiply(entranceScale, baseScale) }],
+      }}
     >
-      {shouldPulse && (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <PulseRing color={color} />
-        </View>
-      )}
-    </TouchableOpacity>
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={onPress}
+        style={[styles.dot, {
+          width: DOT_R * 2, height: DOT_R * 2, borderRadius: DOT_R,
+          backgroundColor: color,
+          borderColor: selected ? 'white' : 'rgba(255,255,255,0.5)',
+          borderWidth: selected ? 2.5 : 1.5,
+          shadowColor: color, shadowOpacity: selected ? 0.8 : 0.4, shadowRadius: selected ? 8 : 3,
+          elevation: selected ? 8 : 3,
+        }]}
+      >
+        {shouldPulse && (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <PulseRing color={color} />
+          </View>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -196,6 +218,7 @@ export default function BodyMap({ biomarkers, selectedSystemId, onSelectSystem }
 
   const STATUS_LABEL: Record<SystemStatus, string> = {
     normal:     t('legendNormal'),
+    low:        language === 'es' ? 'Un poco bajo' : 'A bit low',
     borderline: t('legendBorderline'),
     attention:  t('legendAttention'),
     none:       t('legendNoData'),
@@ -261,7 +284,7 @@ export default function BodyMap({ biomarkers, selectedSystemId, onSelectSystem }
             style={{ width: imgDisplayW, height: imgDisplayH, opacity: 0.88 }}
             resizeMode="contain"
           />
-          {BODY_SYSTEMS.map(system => (
+          {BODY_SYSTEMS.map((system, i) => (
             <BodyDot
               key={system.id}
               system={system}
@@ -270,6 +293,7 @@ export default function BodyMap({ biomarkers, selectedSystemId, onSelectSystem }
               imgW={imgDisplayW}
               imgH={imgDisplayH}
               onPress={() => handleSelect(system.id)}
+              staggerIndex={i}
             />
           ))}
         </View>
@@ -298,7 +322,7 @@ export default function BodyMap({ biomarkers, selectedSystemId, onSelectSystem }
 
       {/* Legend */}
       <View style={styles.legend}>
-        {(['normal', 'borderline', 'attention', 'none'] as SystemStatus[]).map(s => (
+        {(['normal', 'low', 'borderline', 'attention', 'none'] as SystemStatus[]).map(s => (
           <View key={s} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: STATUS_COLOR[s] }]} />
             <Text style={styles.legendLabel}>{STATUS_LABEL[s]}</Text>
@@ -349,11 +373,12 @@ export default function BodyMap({ biomarkers, selectedSystemId, onSelectSystem }
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  wrapper: { width: '100%' },
+  wrapper: { width: '100%', alignItems: 'center' },
 
   mapRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
+    justifyContent: 'center',
     marginBottom: 10,
   },
   sideCol: {
