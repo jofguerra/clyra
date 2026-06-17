@@ -83,7 +83,7 @@ function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language, 
     normal:     { color: Colors.optimal,    bg: '#e8f5ee', label: t('statusNormal') },
     borderline: { color: Colors.borderline, bg: '#fef9e7', label: t('statusBorderline') },
     high:       { color: Colors.attention,  bg: '#fde8e8', label: t('statusHigh') },
-    low:        { color: Colors.attention,  bg: '#fde8e8', label: t('statusLow') },
+    low:        { color: '#E879A2',          bg: '#FCE8F0', label: t('statusLow') },
   };
   const cfg = configs[status as keyof typeof configs] ?? configs.normal;
   const timeStr = new Date(date).toLocaleDateString(language === 'es' ? 'es' : 'en', { month: 'long', year: 'numeric' });

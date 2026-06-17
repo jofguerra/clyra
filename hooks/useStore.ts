@@ -371,7 +371,9 @@ export const useStore = create<UserState>()(
         } catch (err) {
           console.warn('[Clyra] signOut failed:', err);
         }
-        set({ isGuest: true, authUserId: null });
+        // Wipe ALL local PII / health data so the next user on a shared device
+        // can't see the previous user's biomarkers, profile or session tokens.
+        get().clearAllData();
       },
 
       syncToCloud: async () => {

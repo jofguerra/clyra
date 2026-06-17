@@ -295,6 +295,7 @@ export default function TestsScreen() {
     const language = useStore((s) => s.language);
     const isPro = useStore((s) => s.isPro);
     const isGuest = useStore((s) => s.isGuest);
+    const sex = useStore((s) => s.sex);
 
     const [state, setState] = useState<UploadState>('list');
     const [lastUploadCount, setLastUploadCount] = useState(0);
@@ -323,7 +324,7 @@ export default function TestsScreen() {
         setTimeout(async () => {
             try {
                 setState('processing');
-                const { biomarkers: data, testDate } = await extractLabResultsFromPDF(file.uri, file.name);
+                const { biomarkers: data, testDate } = await extractLabResultsFromPDF(file.uri, file.name, sex);
                 setBiomarkers(data, testDate, file.name ?? 'lab_results.pdf', fileHash);
                 setLastUploadCount(data.length);
                 setState('done');
@@ -376,7 +377,7 @@ export default function TestsScreen() {
         setTimeout(async () => {
             try {
                 setState('processing');
-                const { biomarkers: data, testDate } = await extractLabResultsFromImage(uri);
+                const { biomarkers: data, testDate } = await extractLabResultsFromImage(uri, sex);
 
                 // Duplicate check for images: same date + similar biomarker count
                 if (testDate) {
