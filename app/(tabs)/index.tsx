@@ -1,10 +1,12 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { exactResultNumber } from '../../constants/resultTrends';
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Dimensions,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, Alert, Animated, Easing,
 } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
-import LottieView from 'lottie-react-native';
+import LottieView from '../../components/LottieAnimation';
 import { useRouter } from 'expo-router';
 import {
   ShieldCheck, TrendingUp, TrendingDown, Minus,
@@ -26,7 +28,7 @@ import {
   computeInflammatoryRisk, computeOptimalPercentage, RiskLevel,
 } from '../../constants/healthMetrics';
 import {
-  BODY_SYSTEMS, getSystemBiomarkers, getSystemStatus, SystemStatus,
+  BODY_SYSTEMS, getSystemBiomarkers, getSystemStatus, SystemStatus, computeHealthScore, comparableScoreDelta,
 } from '../../constants/biomarkerSystems';
 import { getBiomarkerKnowledge } from '../../constants/biomarkerKnowledge';
 import { Biomarker } from '../../services/openai';
@@ -50,9 +52,8 @@ function ScoreGauge({ score, size = 130 }: { score: number; size?: number }) {
   const circumference = 2 * Math.PI * r;
   const cx = size / 2;
 
-  // Animated value drives BOTH the count-up number and the arc fill
+  // Animate the arc while keeping the recorded number stable.
   const progress = useRef(new Animated.Value(0)).current;
-  const [displayScore, setDisplayScore] = useState(0);
   // Settle bounce on the number when it reaches target
   const numberScale = useRef(new Animated.Value(1)).current;
   // Track the last animated score so we only re-animate when it actually changes
@@ -61,11 +62,6 @@ function ScoreGauge({ score, size = 130 }: { score: number; size?: number }) {
   useEffect(() => {
     if (score === prevScore.current) return;
     prevScore.current = score;
-
-    // Update the displayed integer as the animation progresses
-    const listener = progress.addListener(({ value }) => {
-      setDisplayScore(Math.round(value));
-    });
 
     // Count up the score + draw the arc (900ms theatrical reveal)
     Animated.timing(progress, {
@@ -87,7 +83,7 @@ function ScoreGauge({ score, size = 130 }: { score: number; size?: number }) {
       ]).start();
     });
 
-    return () => progress.removeListener(listener);
+    return () => progress.stopAnimation();
   }, [score]);
 
   // Interpolate progress (0-100) → strokeDashoffset (circumference → 0)
@@ -119,7 +115,7 @@ function ScoreGauge({ score, size = 130 }: { score: number; size?: number }) {
           transform={`rotate(-90 ${cx} ${cx})`} />
       </Svg>
       <Animated.View style={{ alignItems: 'center', transform: [{ scale: numberScale }] }}>
-        <Text style={[styles.gaugeScore, { color: Colors.foreground }]}>{displayScore}</Text>
+        <Text style={[styles.gaugeScore, { color: Colors.foreground }]}>{score}</Text>
         <Text style={[styles.gaugeLabel, { color: Colors.outline }]}>/ 100</Text>
       </Animated.View>
     </View>
@@ -466,8 +462,7 @@ function AnimatedSection({ children, delay = 0, style }: {
 
 // ─── Biomarker Highlight Cards ───────────────────────────────────────────────
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const HIGHLIGHT_CARD_WIDTH = (SCREEN_WIDTH - 40 - 8) / 2;
+
 
 function BiomarkerHighlightCard({ biomarker, language, index = 0, onPress }: {
   biomarker: Biomarker; language: string; index?: number; onPress?: () => void;
@@ -552,7 +547,7 @@ function BiomarkerHighlightCard({ biomarker, language, index = 0, onPress }: {
   return (
     <Animated.View
       style={[
-        { width: HIGHLIGHT_CARD_WIDTH, opacity, transform: [{ scale }, { translateY }] },
+        { width: '48%', opacity, transform: [{ scale }, { translateY }] },
       ]}
     >
       {onPress ? (
@@ -650,7 +645,9 @@ function TrendChartsGrid({ sessions, language }: {
         language === 'es' ? 'es' : 'en', { month: 'short' }
       );
       for (const b of session.biomarkers) {
-        const val = parseBiomarkerNumber(b.value);
+        const latest = sessions.flatMap(s => s.biomarkers).find(m => m.name === b.name);
+        if (latest?.unit !== b.unit) continue;
+        const val = exactResultNumber(b.value, b.referenceRange);
         if (isNaN(val)) continue;
         if (!history[b.name]) history[b.name] = [];
         history[b.name].push({ label, value: val });
@@ -694,9 +691,10 @@ function TrendChartsGrid({ sessions, language }: {
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const t = useT();
-  const healthScore = useStore(s => s.healthScore);
+  const healthScore = useStore(s => computeHealthScore(s.biomarkers));
   const userName = useStore(s => s.userName);
   const biomarkers = useStore(s => s.biomarkers);
   const sessions = useStore(s => s.sessions);
@@ -710,6 +708,7 @@ export default function DashboardScreen() {
   const hasBiomarkers = biomarkers.length > 0;
   const hasRecentChanges = recentlyUpdated.length > 0 || recentlyAdded.length > 0;
 
+  const [showScoreDetails, setShowScoreDetails] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   // Days since last test
@@ -742,8 +741,7 @@ export default function DashboardScreen() {
   }, [userName, age, sex, language, healthScore, biomarkers, t]);
 
   // Score trend
-  const scoreDelta = sessions.length >= 2
-    ? sessions[0].healthScore - sessions[1].healthScore : null;
+  const scoreDelta = comparableScoreDelta(sessions[0]?.biomarkers, sessions[1]?.biomarkers);
   const TrendIcon = scoreDelta === null ? Minus : scoreDelta > 0 ? TrendingUp : scoreDelta < 0 ? TrendingDown : Minus;
   const trendColor = scoreDelta === null ? Colors.outline : scoreDelta > 0 ? Colors.optimal : scoreDelta < 0 ? Colors.attention : Colors.outline;
 
@@ -811,15 +809,14 @@ export default function DashboardScreen() {
 
         {/* ── 0. Hero — rigged scene Lottie with spring entry ── */}
         <HeroEntryAnimation>
-          <View style={styles.heroSection}>
+          <View style={[styles.heroSection, { paddingTop: Math.max(28, insets.top + 12) }]}>
+            <View style={styles.heroCopy}>
+              <Text style={styles.eyebrow}>CLYRA / {language === 'es' ? 'TU SALUD' : 'YOUR HEALTH'}</Text>
+              <Text style={styles.welcomeTitle}>{language === 'es' ? 'Tu salud, más clara.' : 'Health, made clearer.'}</Text>
+              <Text style={styles.welcomeSub}>{language === 'es' ? 'Tus resultados, con claridad.' : 'Your results, made clear.'}</Text>
+            </View>
             <View style={styles.heroContainer}>
-              <LottieView
-                source={require('../../assets/animations/heart-hero-scene.json')}
-                autoPlay
-                loop
-                style={styles.heroLottie}
-                resizeMode="cover"
-              />
+              <Mascot pose="waving" size={104} animation="idle-breath" />
             </View>
           </View>
         </HeroEntryAnimation>
@@ -834,7 +831,6 @@ export default function DashboardScreen() {
             <AnimatedSection delay={100} style={styles.section}>
               <View style={styles.scoreStripCard}>
                 <View style={styles.scoreStripRing}>
-                  <ScoreParticles score={healthScore} />
                   <ScoreGauge score={healthScore} size={96} />
                 </View>
                 <View style={styles.scoreStripInfo}>
@@ -844,9 +840,7 @@ export default function DashboardScreen() {
                     </Text>
                   ) : null}
                   <Text style={styles.scoreStripLabel}>
-                    {language === 'es'
-                      ? (healthScore >= 80 ? 'Te ves muy bien \u2728' : healthScore >= 60 ? 'Bastante bien \u2728' : 'Necesita atencion')
-                      : (healthScore >= 80 ? 'Looking great \u2728' : healthScore >= 60 ? 'Mostly okay \u2728' : 'Needs attention')}
+                    {language === 'es' ? 'Resumen de resultados' : 'Results summary'}
                   </Text>
                   <View style={styles.scoreStripStats}>
                     <Text style={styles.scoreStripStatText}>
@@ -868,6 +862,10 @@ export default function DashboardScreen() {
                       </>
                     )}
                   </View>
+                  <TouchableOpacity accessibilityRole="button" accessibilityState={{ expanded: showScoreDetails }} aria-expanded={showScoreDetails} onPress={() => setShowScoreDetails(!showScoreDetails)} style={{ minHeight: 36, justifyContent: 'center' }}>
+                    <Text style={{ color: Colors.primary, fontSize: 12, fontWeight: '600' }}>{language === 'es' ? 'Cómo se calcula' : 'How it is calculated'} {showScoreDetails ? '−' : '+'}</Text>
+                  </TouchableOpacity>
+                  {showScoreDetails && <Text style={{ fontSize: 11, lineHeight: 17, color: Colors.mutedForeground }}>{language === 'es' ? 'Índice orientativo: en rango 100, limítrofe 65, alto/bajo 25. Es el promedio de tus registros, no una evaluación clínica.' : 'Illustrative index: in range 100, borderline 65, high/low 25. An average of your records, not a clinical assessment.'}</Text>}
                 </View>
               </View>
             </AnimatedSection>
@@ -875,12 +873,12 @@ export default function DashboardScreen() {
             {/* ── 2. Your biomarkers — body map + category chips + legend ── */}
             <AnimatedSection delay={200} style={styles.section}>
               <Text style={styles.bioSectionTitle}>
-                {language === 'es' ? 'Tus biomarcadores \uD83D\uDC96' : 'Your biomarkers \uD83D\uDC96'}
+                {language === 'es' ? 'Tu cuerpo, en detalle' : 'Your body, in detail'}
               </Text>
               <Text style={styles.sectionSub}>
                 {language === 'es'
-                  ? 'Mapeados a tu cuerpo \u2014 toca un chip para saber mas'
-                  : 'Mapped to your body \u2014 tap a chip to learn more'}
+                  ? 'Explora los resultados por sistema'
+                  : 'Explore your results by system'}
               </Text>
 
               <View style={{ alignItems: 'center' }}>
@@ -889,27 +887,6 @@ export default function DashboardScreen() {
                   selectedSystemId={bodyMapSystemId}
                   onSelectSystem={handleBodyMapSelect}
                 />
-              </View>
-
-              {/* Category chips — pill style with status dot */}
-              <View style={styles.chipWrap}>
-                {filterTabs.map(tab => {
-                  const isActive = activeFilter === tab.id;
-                  const dotColor = tab.status ? CHIP_DOT_COLOR[tab.status] : null;
-                  return (
-                    <TouchableOpacity
-                      key={tab.id ?? 'all'}
-                      style={[styles.chip, isActive && styles.chipActive]}
-                      onPress={() => setActiveFilter(tab.id)}
-                      activeOpacity={0.75}
-                    >
-                      {dotColor && <View style={[styles.chipDot, { backgroundColor: dotColor }]} />}
-                      <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                        {tab.label}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
               </View>
 
               {/* Detailed biomarker cards — visible when a system chip is active */}
@@ -1011,15 +988,18 @@ export default function DashboardScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   scroll: { flex: 1 },
   content: { paddingBottom: 130 },
 
   // Hero scene — full-bleed, aspect matches BG_1.png (1124×842)
-  heroSection: { alignItems: 'center' },
+  heroSection: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, paddingTop: 28, paddingBottom: 24, gap: 12 },
+  heroCopy: { flex: 1 },
+  eyebrow: { fontFamily: Typography.families.body, fontSize: 10, letterSpacing: 1.7, fontWeight: '700', color: Colors.primary, marginBottom: 10 },
+  welcomeTitle: { fontFamily: Typography.families.display, fontSize: 26, lineHeight: 31, letterSpacing: -0.8, fontWeight: '700', color: Colors.foreground },
+  welcomeSub: { fontFamily: Typography.families.body, fontSize: 12, lineHeight: 19, color: Colors.mutedForeground, marginTop: 8 },
   heroContainer: {
-    width: '100%',
-    aspectRatio: 1124 / 842,
+    width: 108, height: 118, borderRadius: 28, overflow: 'hidden', backgroundColor: Colors.pastelPinkBg, alignItems: 'center', justifyContent: 'center',
     position: 'relative',
   },
   heroLottie: { width: '100%', height: '100%' },
@@ -1034,8 +1014,8 @@ const styles = StyleSheet.create({
 
   // Content below hero — curves up over the hero bottom
   contentArea: {
-    backgroundColor: '#FFFFFF',
-    marginTop: -40,
+    backgroundColor: Colors.background,
+    marginTop: 0,
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     minHeight: 600,
@@ -1128,8 +1108,9 @@ const styles = StyleSheet.create({
 
   // ─── Compact score strip (horizontal, hero position for Body Map) ─────
   scoreStripCard: {
-    backgroundColor: Colors.pastelPinkBg,
-    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1, borderColor: '#E8EBF0',
+    borderRadius: 24,
     paddingVertical: 14,
     paddingHorizontal: 16,
     flexDirection: 'row',
@@ -1137,7 +1118,7 @@ const styles = StyleSheet.create({
     gap: 14,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.03,
     shadowRadius: 12,
     elevation: 2,
   },
@@ -1271,7 +1252,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 10,
   },
   trendGridItem: {
-    width: (SCREEN_WIDTH - 40 - 10) / 2,
+    width: '48%',
   },
 
   // Share button (subtle secondary at bottom)

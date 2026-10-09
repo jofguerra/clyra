@@ -3,5 +3,5 @@
   "compilerOptions": {
     "strict": true
   },
-  "exclude": ["Design Reference"]
+  "exclude": ["Design Reference", "dist", "test-results", "playwright-report"]
 }

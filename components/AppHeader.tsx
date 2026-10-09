@@ -1,3 +1,5 @@
+import { useRouter } from 'expo-router';
+import { useStore } from '../hooks/useStore';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -13,13 +15,21 @@ interface AppHeaderProps {
 }
 
 export default function AppHeader({ title, showBack, onBack, rightElement }: AppHeaderProps) {
+    const router = useRouter();
+    const handleBack = () => {
+        if (router.canGoBack()) {
+            if (onBack) onBack(); else router.back();
+        } else {
+            router.replace(useStore.getState().hasCompletedOnboarding ? '/(tabs)' : '/onboarding');
+        }
+    };
 
     return (
         <BlurView intensity={80} tint="light" style={styles.container}>
             <View style={styles.content}>
                 <View style={styles.leftContainer}>
                     {showBack ? (
-                        <TouchableOpacity onPress={onBack} style={styles.iconButton}>
+                        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Back" onPress={handleBack} style={styles.iconButton}>
                             <ChevronLeft color={Colors.foreground} size={24} />
                         </TouchableOpacity>
                     ) : (
@@ -74,6 +84,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 0,
+        paddingHorizontal: 60,
     },
     title: {
         fontFamily: Typography.families.body,
@@ -97,7 +108,9 @@ const styles = StyleSheet.create({
         color: Colors.foreground,
     },
     iconButton: {
-        padding: 4,
+        padding: 10,
+        minWidth: 44,
+        minHeight: 44,
         marginLeft: -4,
     },
 });

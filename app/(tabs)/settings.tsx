@@ -1,8 +1,9 @@
+import { showAlert } from '../../services/alerts';
+import { exportLocalData } from '../../services/localExport';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Alert, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Shield, Eye, Lock, Bell, Trash2, Download, Globe, Crown, FileText, RefreshCw, User, ExternalLink, Heart, Sparkles, Droplet, Calendar, ChevronRight, Info, RotateCcw } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 // import AppHeader from '../../components/AppHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import ToggleSwitch from '../../components/ui/ToggleSwitch';
@@ -13,7 +14,7 @@ import { Typography } from '../../constants/typography';
 import { useStore } from '../../hooks/useStore';
 import { useT } from '../../hooks/useT';
 import { shareHealthReport } from '../../services/pdfExport';
-import { supabase } from '../../services/supabase';
+import { supabase, isLocalMode } from '../../services/supabase';
 import { APP_VERSION, PRIVACY_POLICY_URL, TERMS_OF_SERVICE_URL, SUPPORT_EMAIL } from '../../constants/appConfig';
 
 
@@ -68,7 +69,7 @@ export default function SettingsScreen() {
     const t = useT();
 
     useEffect(() => {
-        if (!isGuest && authUserId) {
+        if (supabase && !isGuest && authUserId) {
             supabase.auth.getUser().then(({ data }) => {
                 setUserEmail(data.user?.email ?? null);
             }).catch(() => setUserEmail(null));
@@ -78,7 +79,7 @@ export default function SettingsScreen() {
     }, [isGuest, authUserId]);
 
     const handleSignOut = () => {
-        Alert.alert(
+        showAlert(
             t('signOutBtn'),
             t('signOutConfirm'),
             [
@@ -114,17 +115,24 @@ export default function SettingsScreen() {
         return `${Math.floor(hours / 24)}d ago`;
     };
 
-    const handleExport = () => {
+    const handleExport = async () => {
         if (sessions.length === 0) {
-            Alert.alert(t('noDataToExport'), t('noDataToExportMsg'));
+            showAlert(t('noDataToExport'), t('noDataToExportMsg'));
             return;
         }
-        const latest = sessions[0];
-        Alert.alert(t('exportedTitle'), t('exportedMsg', { n: latest.biomarkers.length }));
+        try {
+            await exportLocalData({
+                version: 1, exportedAt: new Date().toISOString(),
+                profile: { userName, age, sex, language }, sessions,
+            });
+        } catch {
+            showAlert(language === 'es' ? 'No se pudo exportar' : 'Export failed',
+                language === 'es' ? 'Inténtalo de nuevo.' : 'Please try again.');
+        }
     };
 
     const handleDelete = () => {
-        Alert.alert(
+        showAlert(
             t('deleteTitle'),
             t('deleteAllMsg'),
             [
@@ -133,7 +141,7 @@ export default function SettingsScreen() {
                     text: t('deleteBtn'), style: 'destructive',
                     onPress: () => {
                         clearAllData();
-                        Alert.alert(t('deletedTitle'), t('deletedMsg'));
+                        showAlert(t('deletedTitle'), t('deletedMsg'));
                     },
                 },
             ]
@@ -144,7 +152,7 @@ export default function SettingsScreen() {
     // Use this when the user wants to "start from scratch" — erases sessions,
     // onboarding state, XP, achievements, and routes to the welcome slides.
     const handleResetApp = () => {
-        Alert.alert(
+        showAlert(
             language === 'es' ? 'Empezar desde cero' : 'Start from scratch',
             language === 'es'
                 ? 'Esto borrara todos tus datos y te llevara a la pantalla de bienvenida. \u00bfContinuar?'
@@ -155,7 +163,7 @@ export default function SettingsScreen() {
                     text: language === 'es' ? 'Reiniciar' : 'Reset',
                     style: 'destructive',
                     onPress: async () => {
-                        await AsyncStorage.clear();
+                        await useStore.persist.clearStorage();
                         clearAllData();
                         router.replace('/onboarding');
                     },
@@ -171,7 +179,7 @@ export default function SettingsScreen() {
         : '';
 
     const handleCancelSubscription = () => {
-        Alert.alert(
+        showAlert(
             t('cancelConfirmTitle'),
             t('cancelConfirmMsg', { date: formattedExpiry }),
             [
@@ -191,7 +199,7 @@ export default function SettingsScreen() {
 
     const handleShareWithDoctor = async () => {
         if (biomarkers.length === 0) {
-            Alert.alert(t('noDataToShare'), t('noDataToShareMsg'));
+            showAlert(t('noDataToShare'), t('noDataToShareMsg'));
             return;
         }
         setSharingReport(true);
@@ -237,7 +245,9 @@ export default function SettingsScreen() {
                         <User size={20} color={Colors.foreground} />
                         <Text style={styles.sectionTitle}>{t('accountSection')}</Text>
                     </View>
-                    {isGuest ? (
+                    {isLocalMode ? (
+                        <Text style={styles.settingDesc}>{t('localStorageInfo')}</Text>
+                    ) : isGuest ? (
                         <View style={styles.dataActions}>
                             <Button
                                 title={t('authCreateAccount')}
@@ -271,7 +281,7 @@ export default function SettingsScreen() {
                 </View>
 
                 {/* Sync Status (authenticated users only) */}
-                {!isGuest && (
+                {!isLocalMode && !isGuest && (
                     <View style={styles.syncRow}>
                         <RefreshCw size={16} color={Colors.mutedForeground} />
                         <Text style={styles.syncText}>
@@ -410,30 +420,31 @@ export default function SettingsScreen() {
                         </Text>
                     </View>
 
+                    <Text style={[styles.settingDesc, { marginBottom: 12 }]}>{t('settingsPreview')}</Text>
                     <GlassCard padding={0} style={styles.settingsCard}>
                         <View style={styles.prefRow}>
                             <Text style={styles.prefLabel}>
                                 {language === 'es' ? 'Explicaciones simples' : 'Simple explanations'}
                             </Text>
-                            <ToggleSwitch value={prefSimpleExplanations} onValueChange={setPrefSimpleExplanations} />
+                            <ToggleSwitch disabled value={prefSimpleExplanations} onValueChange={setPrefSimpleExplanations} />
                         </View>
                         <View style={styles.prefRow}>
                             <Text style={styles.prefLabel}>
                                 {language === 'es' ? 'Sugerencias de doctor' : 'Doctor suggestions'}
                             </Text>
-                            <ToggleSwitch value={prefDoctorSuggestions} onValueChange={setPrefDoctorSuggestions} />
+                            <ToggleSwitch disabled value={prefDoctorSuggestions} onValueChange={setPrefDoctorSuggestions} />
                         </View>
                         <View style={styles.prefRow}>
                             <Text style={styles.prefLabel}>
                                 {language === 'es' ? 'Recordatorios de seguimiento' : 'Follow-up reminders'}
                             </Text>
-                            <ToggleSwitch value={prefFollowupReminders} onValueChange={setPrefFollowupReminders} />
+                            <ToggleSwitch disabled value={prefFollowupReminders} onValueChange={setPrefFollowupReminders} />
                         </View>
                         <View style={[styles.prefRow, styles.prefRowLast]}>
                             <Text style={styles.prefLabel}>
                                 {language === 'es' ? 'Seguimiento de tendencias' : 'Trend tracking'}
                             </Text>
-                            <ToggleSwitch value={prefTrendTracking} onValueChange={setPrefTrendTracking} />
+                            <ToggleSwitch disabled value={prefTrendTracking} onValueChange={setPrefTrendTracking} />
                         </View>
                     </GlassCard>
                 </View>
@@ -447,6 +458,7 @@ export default function SettingsScreen() {
                         </Text>
                     </View>
 
+                    <Text style={[styles.settingDesc, { marginBottom: 12 }]}>{t('settingsPreview')}</Text>
                     <GlassCard padding={0} style={styles.settingsCard}>
                         <View style={styles.prefRow}>
                             <View style={styles.prefLabelRow}>
@@ -455,7 +467,7 @@ export default function SettingsScreen() {
                                     {language === 'es' ? 'Recordatorio de examenes' : 'Exam reminders'}
                                 </Text>
                             </View>
-                            <ToggleSwitch value={notifExamReminders} onValueChange={setNotifExamReminders} />
+                            <ToggleSwitch disabled value={notifExamReminders} onValueChange={setNotifExamReminders} />
                         </View>
                         <View style={styles.prefRow}>
                             <View style={styles.prefLabelRow}>
@@ -464,7 +476,7 @@ export default function SettingsScreen() {
                                     {language === 'es' ? 'Recordatorio de hidratacion' : 'Hydration reminders'}
                                 </Text>
                             </View>
-                            <ToggleSwitch value={notifHydration} onValueChange={setNotifHydration} />
+                            <ToggleSwitch disabled value={notifHydration} onValueChange={setNotifHydration} />
                         </View>
                         <View style={[styles.prefRow, styles.prefRowLast]}>
                             <View style={styles.prefLabelRow}>
@@ -473,7 +485,7 @@ export default function SettingsScreen() {
                                     {language === 'es' ? 'Resumen semanal' : 'Weekly health summary'}
                                 </Text>
                             </View>
-                            <ToggleSwitch value={notifWeeklySummary} onValueChange={setNotifWeeklySummary} />
+                            <ToggleSwitch disabled value={notifWeeklySummary} onValueChange={setNotifWeeklySummary} />
                         </View>
                     </GlassCard>
                 </View>
@@ -487,12 +499,15 @@ export default function SettingsScreen() {
                         </Text>
                     </View>
 
+                    <Text style={[styles.settingDesc, { marginBottom: 12 }]}>{t('settingsPreview')}</Text>
                     <View style={styles.themeGrid}>
                         {THEMES.map(theme => {
                             const selected = appTheme === theme.id;
                             return (
                                 <TouchableOpacity
                                     key={theme.id}
+                                    disabled
+                                    accessibilityState={{ disabled: true }}
                                     style={[styles.themeCard, selected && styles.themeCardSelected]}
                                     activeOpacity={0.85}
                                     onPress={() => setAppTheme(theme.id as any)}
@@ -514,6 +529,7 @@ export default function SettingsScreen() {
                         <Text style={styles.sectionTitle}>{t('privacyControls')}</Text>
                     </View>
 
+                    <Text style={[styles.settingDesc, { marginBottom: 12 }]}>{t('settingsPreview')}</Text>
                     <GlassCard padding={0} style={styles.settingsCard}>
                         <View style={styles.settingRow}>
                             <View style={styles.settingIconContainer}>
@@ -523,7 +539,7 @@ export default function SettingsScreen() {
                                 <Text style={styles.settingTitle}>{t('dataVisibility')}</Text>
                                 <Text style={styles.settingDesc}>{t('dataVisibilityDesc')}</Text>
                             </View>
-                            <ToggleSwitch value={dataVisible} onValueChange={setDataVisible} />
+                            <ToggleSwitch disabled value={dataVisible} onValueChange={setDataVisible} />
                         </View>
 
                         <View style={styles.settingRow}>
@@ -531,11 +547,11 @@ export default function SettingsScreen() {
                                 <Lock size={20} color={Colors.foreground} />
                             </View>
                             <View style={styles.settingContent}>
-                                <Text style={styles.settingTitle}>{t('encryptionLabel')}</Text>
-                                <Text style={styles.settingDesc}>{t('encryptionDesc')}</Text>
+                                <Text style={styles.settingTitle}>{language === 'es' ? 'Almacenamiento del dispositivo' : 'Device storage'}</Text>
+                                <Text style={styles.settingDesc}>{language === 'es' ? 'Los resultados se guardan en esta app, en tu dispositivo.' : 'Results are saved in this app on your device.'}</Text>
                             </View>
                             <View style={styles.badgeLock}>
-                                <Text style={styles.badgeLockText}>{t('activeLabel')}</Text>
+                                <Text style={styles.badgeLockText}>{t('localMode')}</Text>
                             </View>
                         </View>
 
@@ -547,7 +563,7 @@ export default function SettingsScreen() {
                                 <Text style={styles.settingTitle}>{t('notificationsLabel')}</Text>
                                 <Text style={styles.settingDesc}>{t('notificationsDesc')}</Text>
                             </View>
-                            <ToggleSwitch value={notifications} onValueChange={setNotifications} />
+                            <ToggleSwitch disabled value={notifications} onValueChange={setNotifications} />
                         </View>
                     </GlassCard>
                 </View>
@@ -646,7 +662,7 @@ export default function SettingsScreen() {
                     <TouchableOpacity
                         style={styles.legalCard}
                         activeOpacity={0.7}
-                        onPress={() => Alert.alert(
+                        onPress={() => showAlert(
                             language === 'es' ? 'Uso educativo' : 'Educational use only',
                             language === 'es'
                                 ? 'Esta app es solo para fines educativos e informativos. No reemplaza consejo medico profesional.'
@@ -662,7 +678,7 @@ export default function SettingsScreen() {
                     <TouchableOpacity
                         style={styles.legalCard}
                         activeOpacity={0.7}
-                        onPress={() => Alert.alert(
+                        onPress={() => showAlert(
                             language === 'es' ? 'No es un diagnostico' : 'Not a diagnosis',
                             language === 'es'
                                 ? 'Los resultados y recomendaciones no constituyen un diagnostico medico. Consulta siempre a tu profesional de salud.'
@@ -816,7 +832,7 @@ const styles = StyleSheet.create({
         backgroundColor: Colors.surface, borderRadius: 16, padding: 16,
         borderWidth: 1, borderColor: Colors.border,
     },
-    dataActionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    dataActionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' },
     dataActionContent: { flex: 1, marginRight: 16 },
     dataActionDivider: { height: StyleSheet.hairlineWidth, backgroundColor: Colors.border, marginVertical: 16 },
     // Subscription

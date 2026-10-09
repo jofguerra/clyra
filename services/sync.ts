@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, requireSupabase } from './supabase';
 import { Biomarker } from './openai';
 
 // ─── Types matching Supabase schema ─────────────────────────────────────────
@@ -55,19 +55,19 @@ export interface DbBiomarker {
 // ─── Auth helpers ───────────────────────────────────────────────────────────
 
 export async function signUp(email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await requireSupabase().auth.signUp({ email, password });
   if (error) throw error;
   return data;
 }
 
 export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await requireSupabase().auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
 
 export async function signInWithApple(idToken: string, nonce: string) {
-  const { data, error } = await supabase.auth.signInWithIdToken({
+  const { data, error } = await requireSupabase().auth.signInWithIdToken({
     provider: 'apple',
     token: idToken,
     nonce,
@@ -77,7 +77,7 @@ export async function signInWithApple(idToken: string, nonce: string) {
 }
 
 export async function signInWithGoogle(idToken: string) {
-  const { data, error } = await supabase.auth.signInWithIdToken({
+  const { data, error } = await requireSupabase().auth.signInWithIdToken({
     provider: 'google',
     token: idToken,
   });
@@ -86,12 +86,14 @@ export async function signInWithGoogle(idToken: string) {
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
+  if (!supabase) return;
+  const { error } = await requireSupabase().auth.signOut();
   if (error) throw error;
 }
 
 export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
+  if (!supabase) return null;
+  const { data: { user } } = await requireSupabase().auth.getUser();
   return user;
 }
 
@@ -101,7 +103,7 @@ export async function getProfile(): Promise<DbProfile | null> {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('profiles')
     .select('*')
     .eq('id', user.id)
@@ -115,7 +117,7 @@ export async function updateProfile(updates: Partial<Omit<DbProfile, 'id'>>) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('profiles')
     .update(updates)
     .eq('id', user.id);
@@ -129,7 +131,7 @@ export async function getSessions(): Promise<DbExamSession[]> {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('exam_sessions')
     .select('*')
     .eq('user_id', user.id)
@@ -145,7 +147,7 @@ export async function createSession(
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('exam_sessions')
     .insert({ ...session, user_id: user.id })
     .select()
@@ -159,7 +161,7 @@ export async function deleteSession(sessionId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('exam_sessions')
     .delete()
     .eq('id', sessionId)
@@ -171,7 +173,7 @@ export async function deleteSession(sessionId: string) {
 // ─── Biomarkers ─────────────────────────────────────────────────────────────
 
 export async function getSessionBiomarkers(sessionId: string): Promise<DbBiomarker[]> {
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('biomarkers')
     .select('*')
     .eq('session_id', sessionId);
@@ -184,7 +186,7 @@ export async function getAllBiomarkers(): Promise<DbBiomarker[]> {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('biomarkers')
     .select('*, exam_sessions!inner(exam_date)')
     .eq('user_id', user.id)
@@ -212,7 +214,7 @@ export async function insertBiomarkers(
     sample_type: 'blood' as const,
   }));
 
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('biomarkers')
     .insert(rows);
 
@@ -234,7 +236,7 @@ export async function recordMissionEvent(
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const { data, error } = await supabase.rpc('record_mission_event', {
+  const { data, error } = await requireSupabase().rpc('record_mission_event', {
     p_mission_id: missionId,
     p_mission_type: missionType,
     p_xp: xp,
@@ -255,7 +257,7 @@ export async function getTodayMissionIds(): Promise<string[]> {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('mission_events')
     .select('mission_id')
     .eq('user_id', user.id)
@@ -280,7 +282,7 @@ export async function getWeeklyMissionCount(type: MissionType): Promise<number> 
   startOfWeek.setDate(now.getDate() - daysSinceMonday);
   startOfWeek.setHours(0, 0, 0, 0);
 
-  const { count, error } = await supabase
+  const { count, error } = await requireSupabase()
     .from('mission_events')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
@@ -297,7 +299,7 @@ export async function getAchievements(): Promise<string[]> {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('achievements')
     .select('achievement_key')
     .eq('user_id', user.id);
@@ -310,7 +312,7 @@ export async function unlockAchievement(key: string): Promise<void> {
   const user = await getCurrentUser();
   if (!user) return;
 
-  const { error } = await supabase
+  const { error } = await requireSupabase()
     .from('achievements')
     .upsert(
       { user_id: user.id, achievement_key: key },
@@ -326,7 +328,7 @@ export async function getSubscription() {
   const user = await getCurrentUser();
   if (!user) return null;
 
-  const { data, error } = await supabase
+  const { data, error } = await requireSupabase()
     .from('subscriptions')
     .select('*')
     .eq('user_id', user.id)

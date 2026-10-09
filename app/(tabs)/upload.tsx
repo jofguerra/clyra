@@ -1,9 +1,11 @@
+import LocalModeNotice from '../../components/LocalModeNotice';
+import { isLocalMode } from '../../services/supabase';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
   ActivityIndicator, ScrollView, Alert, Animated, Easing,
 } from 'react-native';
-import LottieView from 'lottie-react-native';
+import LottieView from '../../components/LottieAnimation';
 import { useRouter } from 'expo-router';
 import { Plus, FileText, CircleCheck, ChevronRight, Upload, Camera, Keyboard, FlaskConical, Check, Search, Sparkles, CheckCircle, Image } from 'lucide-react-native';
 import { Motion, SPRING_PLAYFUL } from '../../constants/motion';
@@ -16,7 +18,7 @@ import { useT } from '../../hooks/useT';
 import { Colors } from '../../constants/colors';
 import { Typography } from '../../constants/typography';
 import type { TranslationKey } from '../../constants/i18n';
-import { BODY_SYSTEMS, getSystemBiomarkers, SAMPLE_TYPE_EMOJI } from '../../constants/biomarkerSystems';
+import { BODY_SYSTEMS, getSystemBiomarkers, getSampleTypeLabel, SAMPLE_TYPE_EMOJI } from '../../constants/biomarkerSystems';
 import CoverageMap from '../../components/CoverageMap';
 import Mascot from '../../components/Mascot';
 
@@ -303,6 +305,10 @@ export default function TestsScreen() {
     // ── Upload flow ──────────────────────────────────────────────────────────
 
     const handleUpload = () => {
+        if (isLocalMode) {
+            router.push('/manual-entry');
+            return;
+        }
         // First test is free, subsequent tests require Pro
         if (sessions.length >= 1 && !isPro) {
             Alert.alert(
@@ -494,7 +500,7 @@ export default function TestsScreen() {
                 markerCount={lastUploadCount}
                 t={t}
                 onContinue={() => { setState('list'); router.push('/(tabs)'); }}
-                showSignupPrompt={isGuest && sessions.length === 1}
+                showSignupPrompt={!isLocalMode && isGuest && sessions.length === 1}
                 onSignup={() => { setState('list'); router.push('/onboarding/auth'); }}
             />
         </SafeAreaView>
@@ -584,6 +590,7 @@ export default function TestsScreen() {
             <Text style={styles.pageTitle}>{t('testsTitle')}</Text>
             <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
+                {isLocalMode && <LocalModeNotice />}
                 {/* ── Test History ── */}
                 {sessions.length > 0 ? (
                     <View style={styles.historySection}>
@@ -625,7 +632,7 @@ export default function TestsScreen() {
                     <View style={styles.emptyState}>
                         <FileText size={52} color={Colors.outlineVariant} style={{ marginBottom: 16 }} />
                         <Text style={styles.emptyTitle}>{t('noTestsYet')}</Text>
-                        <Text style={styles.emptySub}>{t('noTestsSub')}</Text>
+                        <Text style={styles.emptySub}>{isLocalMode ? t('localNoTests') : t('noTestsSub')}</Text>
                     </View>
                 )}
 
@@ -638,8 +645,16 @@ export default function TestsScreen() {
                     <View style={styles.addBtnIcon}>
                         <Plus size={22} color="white" strokeWidth={2.5} />
                     </View>
-                    <Text style={styles.addBtnText}>{t('addTest')}</Text>
+                    <Text style={styles.addBtnText}>{t(isLocalMode ? 'manualEntry' : 'addTest')}</Text>
                 </TouchableOpacity>
+
+                {isLocalMode && <TouchableOpacity style={styles.methodRow} onPress={() => router.push('/import-pdf')} activeOpacity={0.85}>
+                    <FileText size={22} color={Colors.primary} />
+                    <View style={styles.methodInfo}>
+                        <Text style={styles.methodTitle}>{language === 'es' ? 'Importar PDF localmente' : 'Import PDF locally'}</Text>
+                        <Text style={styles.methodDesc}>{language === 'es' ? 'PDF Raly con texto · Revisar antes de guardar' : 'Raly text PDF · Review before saving'}</Text>
+                    </View>
+                </TouchableOpacity>}
 
                 {/* ── Health Coverage ── */}
                 {biomarkers.length > 0 && (
@@ -687,7 +702,7 @@ export default function TestsScreen() {
                                                     {test.sampleType && (
                                                         <View style={styles.sampleBadge}>
                                                             <Text style={styles.sampleBadgeText}>
-                                                                {SAMPLE_TYPE_EMOJI[test.sampleType] ?? ''} {test.sampleType}
+                                                                {SAMPLE_TYPE_EMOJI[test.sampleType] ?? ''} {getSampleTypeLabel(test.sampleType, language)}
                                                             </Text>
                                                         </View>
                                                     )}
@@ -715,8 +730,8 @@ const styles = StyleSheet.create({
     center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
     pageTitle: {
         fontFamily: Typography.families.display,
-        fontSize: 20, fontWeight: '800', color: Colors.foreground,
-        paddingHorizontal: 20, paddingTop: 14, paddingBottom: 6,
+        fontSize: 28, fontWeight: '700', color: Colors.foreground,
+        paddingHorizontal: 20, paddingTop: 24, paddingBottom: 14,
         letterSpacing: -0.3,
     },
 
@@ -732,7 +747,7 @@ const styles = StyleSheet.create({
         marginBottom: 28,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
+        shadowOpacity: 0.10,
         shadowRadius: 16,
         elevation: 4,
     },
@@ -931,7 +946,7 @@ const styles = StyleSheet.create({
         paddingVertical: 16, paddingHorizontal: 40,
         shadowColor: Colors.primary,
         shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25, shadowRadius: 16,
+        shadowOpacity: 0.10, shadowRadius: 16,
         marginBottom: 12,
     },
     doneBtnText: {

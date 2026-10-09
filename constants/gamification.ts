@@ -59,7 +59,7 @@ export const SCORE_LEVELS: ScoreLevel[] = [
 
 /** Returns the ScoreLevel matching the given score (clamped 0-100). */
 export function getScoreLevel(score: number): ScoreLevel {
-  const clamped = Math.max(0, Math.min(100, score));
+  const clamped = Math.max(0, Math.min(100, Number.isFinite(score) ? Math.round(score) : 0));
   const level = SCORE_LEVELS.find(
     (l) => clamped >= l.minScore && clamped <= l.maxScore,
   );
@@ -69,7 +69,7 @@ export function getScoreLevel(score: number): ScoreLevel {
 
 /** Returns the number of points needed to reach the next level, or 0 if already at the highest level. */
 export function getPointsToNextLevel(score: number): number {
-  const clamped = Math.max(0, Math.min(100, score));
+  const clamped = Math.max(0, Math.min(100, Number.isFinite(score) ? Math.round(score) : 0));
   const currentIndex = SCORE_LEVELS.findIndex(
     (l) => clamped >= l.minScore && clamped <= l.maxScore,
   );
@@ -128,10 +128,14 @@ export interface XPLevelInfo {
   currentXP: number;
   nextLevelXP: number;
   progress: number;
+  isMaxLevel: boolean;
+  remainingXP: number;
+  totalXP: number;
 }
 
 /** Given total XP, returns the current level info including progress toward next level. */
 export function getXPLevel(xp: number): XPLevelInfo {
+  xp = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
   let currentLevel = XP_LEVEL_THRESHOLDS[0];
 
   for (const threshold of XP_LEVEL_THRESHOLDS) {
@@ -156,6 +160,9 @@ export function getXPLevel(xp: number): XPLevelInfo {
     currentXP: xpIntoLevel,
     nextLevelXP: xpForNextLevel,
     progress,
+    isMaxLevel,
+    remainingXP: isMaxLevel ? 0 : nextThreshold.xpRequired - xp,
+    totalXP: xp,
   };
 }
 
@@ -189,19 +196,19 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: 'heart_green',
-    name: { en: 'Healthy Heart', es: 'Corazón Sano' },
+    name: { en: 'Cardio Results in Range', es: 'Cardio en Rango' },
     description: {
-      en: 'Get all cardiovascular markers in optimal range',
-      es: 'Lleva todos tus marcadores cardiovasculares al rango óptimo',
+      en: 'All recorded cardiovascular markers are in range',
+      es: 'Todos los marcadores cardiovasculares registrados están en rango',
     },
     icon: '❤️',
   },
   {
     id: 'kidneys_green',
-    name: { en: 'Kidney Health Achieved', es: 'Salud Renal Lograda' },
+    name: { en: 'Urinary Results in Range', es: 'Urinario en Rango' },
     description: {
-      en: 'Get all kidney markers in optimal range',
-      es: 'Lleva todos tus marcadores renales al rango óptimo',
+      en: 'All recorded renal and urinary markers are in range',
+      es: 'Todos los marcadores renales y urinarios registrados están en rango',
     },
     icon: '🫘',
   },
@@ -227,8 +234,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'three_checkups',
     name: { en: 'Consistent Monitoring', es: 'Monitoreo Consistente' },
     description: {
-      en: 'Complete three quarterly checkups',
-      es: 'Completa tres chequeos trimestrales',
+      en: 'Record three exams',
+      es: 'Registra tres exámenes',
     },
     icon: '👑',
   },
@@ -245,8 +252,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'metabolic_reboot',
     name: { en: 'Metabolic Balance', es: 'Balance Metabólico' },
     description: {
-      en: 'Bring all metabolic markers into normal range',
-      es: 'Lleva todos tus marcadores metabólicos al rango normal',
+      en: 'All recorded metabolic markers are in range',
+      es: 'Todos los marcadores metabólicos registrados están en rango',
     },
     icon: '⚡',
   },
@@ -270,10 +277,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   },
   {
     id: 'elite_score',
-    name: { en: 'Excellent Health', es: 'Salud Excelente' },
+    name: { en: 'Results Index 90+', es: 'Índice de Resultados 90+' },
     description: {
-      en: 'Achieve an Excellent health score (90+)',
-      es: 'Alcanza un puntaje de salud Excelente (90+)',
+      en: 'Record a results index of 90 or more',
+      es: 'Registra un índice de resultados de 90 o más',
     },
     icon: '💎',
   },

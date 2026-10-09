@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert, Linking,
+  TouchableOpacity, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -27,9 +27,7 @@ export default function SubscriptionScreen() {
   const t = useT();
   const language = useStore((s) => s.language);
   const isPro = useStore((s) => s.isPro);
-  const setSubscription = useStore((s) => s.setSubscription);
   const [selectedPlan, setSelectedPlan] = useState<Plan>('annual');
-  const [loading, setLoading] = useState(false);
 
   const features = [
     { icon: Sparkles, text: t('subFeature1') },
@@ -38,40 +36,6 @@ export default function SubscriptionScreen() {
     { icon: Shield, text: t('subFeature4') },
     { icon: Target, text: t('subFeature5') },
   ];
-
-  const handleSubscribe = async () => {
-    setLoading(true);
-
-    // TODO: Replace with actual IAP logic (expo-in-app-purchases or react-native-purchases)
-    // For now, simulate a successful purchase
-    setTimeout(() => {
-      const expiresAt = new Date();
-      if (selectedPlan === 'monthly') {
-        expiresAt.setMonth(expiresAt.getMonth() + 1);
-      } else {
-        expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      }
-      setSubscription(selectedPlan, expiresAt.toISOString());
-      setLoading(false);
-      Alert.alert(
-        language === 'es' ? 'Bienvenido a Pro!' : 'Welcome to Pro!',
-        language === 'es'
-          ? 'Ahora tienes acceso completo a todas las funciones.'
-          : 'You now have full access to all features.',
-        [{ text: 'OK', onPress: () => router.back() }],
-      );
-    }, 1500);
-  };
-
-  const handleRestore = () => {
-    // TODO: Implement actual restore logic
-    Alert.alert(
-      t('subRestore'),
-      language === 'es'
-        ? 'No se encontraron compras anteriores.'
-        : 'No previous purchases found.',
-    );
-  };
 
   if (isPro) {
     return (
@@ -107,6 +71,10 @@ export default function SubscriptionScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.previewNotice}>
+          <Text style={styles.previewTitle}>{t('purchasesUnavailable')}</Text>
+          <Text style={styles.previewBody}>{t('purchasesPreview')}</Text>
+        </View>
         {/* Hero */}
         <View style={styles.heroSection}>
           <View style={styles.heroMascot}>
@@ -188,31 +156,20 @@ export default function SubscriptionScreen() {
 
         {/* Subscribe button */}
         <TouchableOpacity
-          style={[styles.subscribeBtn, loading && { opacity: 0.7 }]}
+          style={[styles.subscribeBtn, { opacity: 0.5 }]}
           activeOpacity={0.85}
-          onPress={handleSubscribe}
-          disabled={loading}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: true }}
+          disabled
         >
           <Text style={styles.subscribeBtnText}>
-            {loading
-              ? (language === 'es' ? 'Procesando...' : 'Processing...')
-              : t('subStartTrial')}
+            {t('purchasesUnavailable')}
           </Text>
         </TouchableOpacity>
 
-        <Text style={styles.trialNote}>
-          {t('subTrialNote', { price: selectedPlan === 'monthly' ? `${MONTHLY_PRICE}/mo` : `${ANNUAL_PRICE}/yr` })}
-        </Text>
-
-        {/* Guarantee */}
-        <View style={styles.guaranteeRow}>
-          <Shield size={14} color={Colors.outline} />
-          <Text style={styles.guaranteeText}>{t('subCancelAnytime')}</Text>
-        </View>
-
         {/* Links */}
         <View style={styles.linksRow}>
-          <TouchableOpacity onPress={handleRestore}>
+          <TouchableOpacity disabled accessibilityState={{ disabled: true }} style={{ opacity: 0.5 }}>
             <Text style={styles.linkText}>{t('subRestore')}</Text>
           </TouchableOpacity>
           <Text style={styles.linkDot}>·</Text>
@@ -230,6 +187,9 @@ export default function SubscriptionScreen() {
 }
 
 const styles = StyleSheet.create({
+  previewNotice: { padding: 16, borderRadius: 18, backgroundColor: Colors.pastelPinkBg, marginBottom: 24, gap: 6 },
+  previewTitle: { fontSize: 15, fontWeight: '700', color: Colors.foreground },
+  previewBody: { fontSize: 13, lineHeight: 20, color: Colors.mutedForeground },
   safeArea: { flex: 1, backgroundColor: Colors.background },
   header: {
     flexDirection: 'row', justifyContent: 'flex-end',

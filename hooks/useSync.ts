@@ -28,6 +28,7 @@ export function useSyncEffect() {
 
   // ── Auth state listener: pull on sign-in ─────────────────────────
   useEffect(() => {
+    if (!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event) => {
         if (event === 'SIGNED_IN' && !syncInProgress.current) {
@@ -49,7 +50,7 @@ export function useSyncEffect() {
   // ── Debounced push on significant store changes ──────────────────
   useEffect(() => {
     // Skip sync for guests or if a sync is already running
-    if (isGuest) return;
+    if (!supabase || isGuest) return;
 
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);

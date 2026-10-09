@@ -1,7 +1,10 @@
+import { exactResultNumber } from '../../constants/resultTrends';
+import { comparableScoreDelta, computeHealthScore } from '../../constants/biomarkerSystems';
+import { useAppWidth } from '../../hooks/useAppWidth';
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity, Share,
-  Dimensions, NativeSyntheticEvent, NativeScrollEvent, LayoutAnimation, Image,
+  NativeSyntheticEvent, NativeScrollEvent, LayoutAnimation, Image,
 } from 'react-native';
 import Svg, { Circle, Polyline, Line, Polygon } from 'react-native-svg';
 import {
@@ -24,8 +27,7 @@ import { parseBiomarkerNumber } from '../../constants/valueParsing';
 import { ACHIEVEMENTS, getScoreLevel } from '../../constants/gamification';
 import { GOALS } from '../../constants/healthGoals';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const CARD_W = SCREEN_W - 40; // full width minus padding
+
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,12 +70,13 @@ function PageDots({ count, active }: { count: number; active: number }) {
 // ─── Horizontal paged ScrollView wrapper ─────────────────────────────────────
 
 function PagedCards({ children, cardCount }: { children: React.ReactNode; cardCount: number }) {
+  const CARD_W = useAppWidth() - 40;
   const [activePage, setActivePage] = useState(0);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const page = Math.round(e.nativeEvent.contentOffset.x / CARD_W);
+    const page = Math.round(e.nativeEvent.contentOffset.x / (CARD_W + 12));
     setActivePage(Math.max(0, Math.min(page, cardCount - 1)));
-  }, [cardCount]);
+  }, [cardCount, CARD_W]);
 
   return (
     <View>
@@ -101,6 +104,7 @@ function ScoreGraph({ sessions, language, t }: {
   language: string;
   t: ReturnType<typeof useT>;
 }) {
+  const chartWidth = Math.min(320, useAppWidth() - 80);
   // ─── With only 1 exam, show a friendly "trends unlock soon" card ─────────
   // A real line chart with a single dot + projection looks broken.
   if (sessions.length < 2) {
@@ -142,19 +146,13 @@ function ScoreGraph({ sessions, language, t }: {
     );
   }
 
-  const W = 320, H = 110;
+  const W = chartWidth, H = 110;
   const PAD = { top: 16, bottom: 28, left: 10, right: 10 };
   const gW = W - PAD.left - PAD.right;
   const gH = H - PAD.top - PAD.bottom;
 
-  // Add projected "next test" point 3 months after last session
-  const lastDate = new Date(sessions[0].date);
-  const nextDate = new Date(lastDate);
-  nextDate.setMonth(nextDate.getMonth() + 3);
-  const nextScore = sessions[0].healthScore; // projected flat
-
-  const allSessions = [...sessions].reverse(); // oldest first
-  const totalPoints = allSessions.length + 1; // +1 for projected point
+  const allSessions = [...sessions].reverse();
+  const totalPoints = allSessions.length;
 
   const xFor = (i: number) => PAD.left + (i / (totalPoints - 1)) * gW;
   const yFor = (score: number) => PAD.top + gH - ((score / 100) * gH);
@@ -163,19 +161,11 @@ function ScoreGraph({ sessions, language, t }: {
     .map((s, i) => `${xFor(i)},${yFor(s.healthScore)}`)
     .join(' ');
 
-  const lastX = xFor(allSessions.length - 1);
-  const lastY = yFor(allSessions[allSessions.length - 1].healthScore);
-  const projX = xFor(totalPoints - 1);
-  const projY = yFor(nextScore);
-
   return (
     <View style={styles.graphCard}>
       <View style={styles.graphTitleRow}>
         <Text style={styles.graphTitle}>{t('scoreHistory')}</Text>
-        <View style={styles.projLegend}>
-          <View style={styles.projDash} />
-          <Text style={styles.projLegendText}>{t('projectedNext')}</Text>
-        </View>
+
       </View>
 
       <Svg width={W} height={H} style={{ alignSelf: 'center' }}>
@@ -200,15 +190,6 @@ function ScoreGraph({ sessions, language, t }: {
           />
         )}
 
-        {/* Projected dashed line */}
-        <Line
-          x1={lastX} y1={lastY} x2={projX} y2={projY}
-          stroke={Colors.primary}
-          strokeWidth={1.5}
-          strokeDasharray="4,4"
-          opacity={0.5}
-        />
-
         {/* Data point dots */}
         {allSessions.map((s, i) => {
           const cx = xFor(i);
@@ -225,9 +206,6 @@ function ScoreGraph({ sessions, language, t }: {
           );
         })}
 
-        {/* Projected point */}
-        <Circle cx={projX} cy={projY} r={3.5} fill="none"
-          stroke={Colors.primary} strokeWidth={1.5} strokeDasharray="2,1" opacity={0.5} />
       </Svg>
 
       {/* Date labels */}
@@ -237,14 +215,12 @@ function ScoreGraph({ sessions, language, t }: {
             {formatShort(s.date, language)}
           </Text>
         ))}
-        <Text style={[styles.dateLabel, styles.dateLabelProj, { left: projX - 16 }]}>
-          {formatShort(nextDate.toISOString(), language)}
-        </Text>
+
       </View>
 
       <View style={styles.nextTestBanner}>
         <Text style={styles.nextTestText}>
-          📅 {t('nextTestIn', { n: 3 })}
+          {language === 'es' ? 'Cada punto resume un examen; los paneles pueden tener marcadores distintos.' : 'Each point summarizes an exam; panels may contain different markers.'}
         </Text>
       </View>
     </View>
@@ -258,20 +234,21 @@ function getBiomarkerHistory(
   biomarkerName: string,
 ): { value: number; date: string }[] {
   const result: { value: number; date: string }[] = [];
+  const unit = sessions.flatMap(s => s.biomarkers).find(b => b.name.toLowerCase() === biomarkerName.toLowerCase())?.unit;
   for (let i = sessions.length - 1; i >= 0; i--) {
     const s = sessions[i];
     const match = s.biomarkers.find(
       (b) => b.name.toLowerCase() === biomarkerName.toLowerCase(),
     );
-    if (match) {
-      const num = parseBiomarkerNumber(match.value);
+    if (match && match.unit === unit) {
+      const num = exactResultNumber(match.value, match.referenceRange);
       if (!isNaN(num)) result.push({ value: num, date: s.date });
     }
   }
   return result;
 }
 
-const SPARK_CARD_W = (SCREEN_W - 40 - 8) / 2;
+
 
 function SparklineCard({ name, history, unit, status, language }: {
   name: string;
@@ -287,7 +264,7 @@ function SparklineCard({ name, history, unit, status, language }: {
     : status === 'borderline' ? Colors.borderline
     : Colors.attention;
 
-  const W = 140, H = 50;
+  const W = Math.max(80, (useAppWidth() - 40) * 0.48 - 28), H = 50;
   const PAD = 6;
   const gW = W - PAD * 2;
   const gH = H - PAD * 2;
@@ -409,7 +386,7 @@ function computeDeltas(current: Biomarker[], previous: Biomarker[]): BiomarkerDe
   const deltas: BiomarkerDelta[] = [];
   for (const b of current) {
     const prev = previous.find(p => p.name.toLowerCase() === b.name.toLowerCase());
-    if (!prev) continue;
+    if (!prev || prev.unit.trim().toLowerCase() !== b.unit.trim().toLowerCase()) continue;
     const rankNow = getStatusRank(b.status);
     const rankPrev = getStatusRank(prev.status);
     const improved = rankNow > rankPrev;
@@ -485,6 +462,7 @@ function getDoctorIcon(markerName: string) {
 function DoctorQuestionCard({ question, marker, lang }: {
   question: string; marker: string; lang: string;
 }) {
+  const cardWidth = useAppWidth() - 40;
   const [shared, setShared] = useState(false);
   const Icon = getDoctorIcon(marker);
 
@@ -497,7 +475,7 @@ function DoctorQuestionCard({ question, marker, lang }: {
   };
 
   return (
-    <View style={[styles.doctorCard, { width: CARD_W }]}>
+    <View style={[styles.doctorCard, { width: cardWidth }]}>
       <View style={styles.doctorCardHeader}>
         <View style={styles.doctorIconWrap}>
           <Icon size={16} color={Colors.primary} />
@@ -893,9 +871,7 @@ export default function TrendsScreen() {
   const improving = deltas.filter(d => d.improved);
 
   // Overall score delta vs previous session
-  const delta = hasSessions && previous
-    ? healthScore - previous.healthScore
-    : null;
+  const delta = comparableScoreDelta(latest?.biomarkers, previous?.biomarkers);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -903,11 +879,12 @@ export default function TrendsScreen() {
 
         {/* ── Page header (matches reference) ── */}
         <View style={styles.trendsHeader}>
+          <Text style={{ fontFamily: Typography.families.body, fontSize: 10, letterSpacing: 1.7, fontWeight: '700', color: Colors.primary, marginBottom: 8 }}>{language === 'es' ? 'EN PERSPECTIVA' : 'THE BIGGER PICTURE'}</Text>
           <Text style={styles.trendsTitle}>
-            {language === 'es' ? 'Tendencias \uD83D\uDCC8' : 'Trends \uD83D\uDCC8'}
+            {language === 'es' ? 'Tu progreso' : 'Your progress'}
           </Text>
           <Text style={styles.trendsSub}>
-            {language === 'es' ? 'Como esta cambiando tu salud' : 'How your health is changing'}
+            {language === 'es' ? 'Una mirada a tus resultados en el tiempo' : 'A look at your results over time'}
           </Text>
         </View>
 
@@ -920,7 +897,7 @@ export default function TrendsScreen() {
         ) : (
           <>
             {/* ── Score history graph ── */}
-            <ScoreGraph sessions={sessions} language={language} t={t} />
+            <ScoreGraph sessions={sessions.map(s => ({ ...s, healthScore: computeHealthScore(s.biomarkers) }))} language={language} t={t} />
 
             {/* ── Score improved celebration banner ── */}
             {delta !== null && delta > 0 && (
@@ -1059,7 +1036,7 @@ const styles = StyleSheet.create({
   trendsHeader: { marginBottom: 18 },
   trendsTitle: {
     fontFamily: Typography.families.display,
-    fontSize: 28, fontWeight: '800', color: Colors.foreground,
+    fontSize: 30, fontWeight: '700', color: Colors.foreground,
     letterSpacing: -0.5,
   },
   trendsSub: {
@@ -1106,9 +1083,9 @@ const styles = StyleSheet.create({
 
   // Graph
   graphCard: {
-    backgroundColor: '#fff', borderRadius: 20, padding: 16, marginBottom: 16,
+    backgroundColor: '#fff', borderRadius: 24, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#E8EBF0',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+    shadowOpacity: 0.02, shadowRadius: 12, elevation: 1,
   },
   graphTitleRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8,
@@ -1148,7 +1125,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     borderLeftWidth: 4, marginBottom: 24,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+    shadowOpacity: 0.02, shadowRadius: 12, elevation: 1,
   },
   scoreCardLeft: { flex: 1 },
   scoreCardLabel: {
@@ -1307,7 +1284,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center',
   },
   badgeItem: {
-    width: (SCREEN_W - 40 - 30) / 4,
+    width: '22%',
     alignItems: 'center',
     marginBottom: 4,
   },
@@ -1381,7 +1358,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sparkCard: {
-    width: (SCREEN_W - 40 - 8) / 2,
+    width: '48%',
     backgroundColor: '#fff',
     borderRadius: 16,
     padding: 14,

@@ -32,98 +32,19 @@ export type MascotAnimation =
 // Default has a pre-composited "whole heart.png" — use that for simplicity
 const DEFAULT_WHOLE = require('../Animations and Assets/Heart Mascot/Default/whole heart.png');
 
-const POSES: Record<MascotPose, any[]> = {
-  default: [DEFAULT_WHOLE],
-
-  waving: [
-    require('../Animations and Assets/Heart Mascot/Waving/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Waving/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Waving/body.png'),
-    require('../Animations and Assets/Heart Mascot/Waving/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Waving/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Waving/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Waving/mouth.png'),
-  ],
-
-  celebrating: [
-    require('../Animations and Assets/Heart Mascot/Celebrating/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/body.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/mouth.png'),
-    require('../Animations and Assets/Heart Mascot/Celebrating/confetti.png'),
-  ],
-
-  thinking: [
-    require('../Animations and Assets/Heart Mascot/Thinking/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Thinking/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Thinking/body.png'),
-    require('../Animations and Assets/Heart Mascot/Thinking/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Thinking/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Thinking/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Thinking/mouth.png'),
-  ],
-
-  sleeping: [
-    require('../Animations and Assets/Heart Mascot/Sleeping/pillow.png'),
-    require('../Animations and Assets/Heart Mascot/Sleeping/body.png'),
-    require('../Animations and Assets/Heart Mascot/Sleeping/hand 1.png'),
-    require('../Animations and Assets/Heart Mascot/Sleeping/hand 2.png'),
-    require('../Animations and Assets/Heart Mascot/Sleeping/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Sleeping/mouth.png'),
-  ],
-
-  sad: [
-    require('../Animations and Assets/Heart Mascot/Sad/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Sad/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Sad/body.png'),
-    require('../Animations and Assets/Heart Mascot/Sad/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Sad/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Sad/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Sad/mouth.png'),
-  ],
-
-  pointing: [
-    require('../Animations and Assets/Heart Mascot/Pointing/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Pointing/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Pointing/body.png'),
-    require('../Animations and Assets/Heart Mascot/Pointing/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Pointing/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Pointing/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Pointing/mouth.png'),
-  ],
-
-  flexing: [
-    require('../Animations and Assets/Heart Mascot/Flexing/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Flexing/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Flexing/body.png'),
-    require('../Animations and Assets/Heart Mascot/Flexing/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Flexing/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Flexing/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Flexing/mouth.png'),
-  ],
-
-  doctor: [
-    require('../Animations and Assets/Heart Mascot/Doctor/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Doctor/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Doctor/body.png'),
-    require('../Animations and Assets/Heart Mascot/Doctor/arm 1.png'),
-    require('../Animations and Assets/Heart Mascot/Doctor/arm 2.png'),
-    require('../Animations and Assets/Heart Mascot/Doctor/uniform.png'),
-    require('../Animations and Assets/Heart Mascot/Doctor/eyes.png'),
-  ],
-
-  clipboardReading: [
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/leg 1.png'),
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/leg 2.png'),
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/body.png'),
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/clipboard.png'),
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/magnifying lens.png'),
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/eyes.png'),
-    require('../Animations and Assets/Heart Mascot/Clipboard-Reading/mouth.png'),
-  ],
+// Rendered from the original Illustrator artboards, preserving authored placement.
+// The individual PNG parts have cropped canvases and cannot be stacked full-size.
+const POSES: Record<MascotPose, any> = {
+  default: DEFAULT_WHOLE,
+  waving: require('../assets/mascot/waving.png'),
+  celebrating: require('../assets/mascot/celebrating.png'),
+  thinking: require('../assets/mascot/thinking.png'),
+  sleeping: require('../assets/mascot/sleeping.png'),
+  sad: require('../assets/mascot/sad.png'),
+  pointing: require('../assets/mascot/pointing.png'),
+  flexing: require('../assets/mascot/flexing.png'),
+  doctor: require('../assets/mascot/doctor.png'),
+  clipboardReading: require('../assets/mascot/clipboardReading.png'),
 };
 
 // ─── Animation presets ─────────────────────────────────────────────────────────
@@ -303,24 +224,21 @@ export default function Mascot({
   style,
 }: MascotProps) {
   const animatedStyle = useMascotAnimation(animation);
-  const parts = POSES[pose];
+  const source = POSES[pose];
 
   return (
     <Animated.View
       style={[{ width: size, height: size }, animatedStyle, style]}
       pointerEvents="none"
     >
-      {parts.map((src, i) => (
         <Image
-          key={i}
-          source={src}
+          source={source}
           style={[
             StyleSheet.absoluteFillObject,
             { width: size, height: size, resizeMode: 'contain' },
           ]}
           fadeDuration={0}
         />
-      ))}
     </Animated.View>
   );
 }

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Biomarker } from './openai';
@@ -307,6 +308,11 @@ export function generateHealthReportHTML(params: HealthReportParams): string {
 
 export async function shareHealthReport(params: HealthReportParams): Promise<void> {
   const html = generateHealthReportHTML(params);
+
+  if (Platform.OS === 'web') {
+    await Print.printAsync({ html });
+    return;
+  }
 
   const { uri } = await Print.printToFileAsync({
     html,

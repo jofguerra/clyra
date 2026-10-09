@@ -1,3 +1,6 @@
+import LocalModeNotice from '../../components/LocalModeNotice';
+import Button from '../../components/ui/Button';
+import { isLocalMode } from '../../services/supabase';
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, FlatList, TextInput,
@@ -154,6 +157,20 @@ export default function ChatScreen() {
     t('chatQuick3'),
     t('chatQuick4'),
   ];
+
+  if (isLocalMode) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: 120 }}>
+          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+            <Mascot pose="sleeping" size={160} animation="sleep-bob" />
+          </View>
+          <LocalModeNotice />
+          <Button title={t('manualEntry')} onPress={() => router.push('/manual-entry')} />
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   // Gate chat behind Pro (free users get a preview message only)
   if (!isPro && hasBiomarkers) {

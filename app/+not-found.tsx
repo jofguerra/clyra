@@ -17,7 +17,7 @@ export default function NotFoundScreen() {
         <Mascot pose="sad" size={140} animation="idle-breath" />
         <Text style={styles.code}>404</Text>
         <Text style={styles.title}>
-          {language === 'es' ? '!Ups! Pagina no encontrada' : "Oops! Page not found"}
+          {language === 'es' ? '¡Ups! Página no encontrada' : "Oops! Page not found"}
         </Text>
         <Text style={styles.body}>
           {language === 'es'

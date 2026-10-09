@@ -1,6 +1,6 @@
 // ─── Supabase Edge Function Proxy ────────────────────────────────────────────
 // All OpenAI calls go through the proxy — API key stays server-side.
-import { supabase } from './supabase';
+import { requireSupabase } from './supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   computeStatusFromRange, canonicalizeValue, isPlaceholderValue,
@@ -15,7 +15,7 @@ const PROXY_URL = `${SUPABASE_URL}/functions/v1/openai-proxy`;
  *  (which is a valid JWT that passes verify_jwt on edge functions). */
 async function getAuthToken(): Promise<string> {
   try {
-    const { data } = await supabase.auth.getSession();
+    const { data } = await requireSupabase().auth.getSession();
     if (data.session?.access_token) {
       return data.session.access_token;
     }
@@ -316,6 +316,7 @@ function openaiPath(url: string): string {
 
 /** Generic proxy fetch for OpenAI API calls — the Supabase edge function injects the real key. */
 async function proxyFetch(openaiUrl: string, init?: RequestInit): Promise<Response> {
+  requireSupabase(); // Fail before any network request in local mode.
   const path = openaiPath(openaiUrl);
   const token = await getAuthToken();
   const headers: Record<string, string> = {

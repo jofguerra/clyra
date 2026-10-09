@@ -112,8 +112,8 @@ export const BODY_SYSTEMS: BodySystem[] = [
     id: 'renal',
     emoji: '🫘',
     label: 'REN',
-    name: { en: 'Kidneys', es: 'Riñones' },
-    shortName: { en: 'Kidneys', es: 'Riñones' },
+    name: { en: 'Renal & urinary', es: 'Renal y urinario' },
+    shortName: { en: 'Urinary', es: 'Urinario' },
     biomarkerNames: [
       'Creatinina', 'Ácido Úrico', 'Urea', 'BUN', 'Nitrógeno Ureico', 'Nitrógeno de Urea',
       'Microalbúmina', 'Cistatina C', 'TFG', 'Sodio', 'Potasio', 'Cloro',
@@ -256,7 +256,7 @@ export const BODY_SYSTEMS: BodySystem[] = [
     name: { en: 'Hormones', es: 'Hormonas' },
     shortName: { en: 'Hormones', es: 'Hormonas' },
     biomarkerNames: [
-      'Cortisol', 'DHEA', 'DHEAS', 'DHEA-S', 'Testosterona', 'Estradiol',
+      'Cortisol', 'DHEA', 'DHEAS', 'DHEA-S', 'Testosterona', 'Testosterona Libre', 'Estradiol',
       'Progesterona', 'FSH', 'LH', 'Prolactina',
       'IGF-1', 'Hormona de Crecimiento', 'PTH',
     ],
@@ -293,12 +293,34 @@ export const SAMPLE_TYPE_EMOJI: Record<string, string> = {
   saliva: '\uD83D\uDCA7',  // 💧
 };
 
-function nameMatch(biomarkerName: string, systemNames: string[]): boolean {
-  const b = biomarkerName.toLowerCase();
-  return systemNames.some(n => {
-    const s = n.toLowerCase();
-    return b === s || b.includes(s) || s.includes(b);
-  });
+// Exact normalized aliases avoid matching A1c as hemoglobin or urine as blood.
+const normalizeMarker = (name: string) => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+const MARKER_ALIASES: Record<string, string> = {
+  'proteina c reactiva': 'pcr', 'crp': 'pcr',
+  'glucosa en ayunas': 'glucosa', 'glucose': 'glucosa',
+  'hba1c': 'hemoglobina a1c', 'a1c': 'hemoglobina a1c',
+  'globulos blancos': 'leucocitos', 'globulos rojos': 'eritrocitos',
+  'nitrogeno ureico': 'bun', 'nitrogeno de urea': 'bun',
+  'bilirrubina': 'bilirrubina total', 'bilirrubina en orina': 'bilirrubina (orina)',
+  'glucosa en orina': 'glucosa (orina)', 'albumina en orina': 'albumina (orina)',
+  'leucocitos en orina': 'leucocitos (orina)', 'globulos blancos (orina)': 'leucocitos (orina)',
+  'sangre oculta en orina': 'sangre oculta', 'psa': 'psa total',
+  'cuerpos cetonicos': 'cetonas', 'acetona': 'cetonas',
+  'acido folico': 'vitamina b9', 'folato': 'vitamina b9',
+  'hierro': 'hierro serico', 'dheas': 'dhea-s',
+  'velocidad de sedimentacion': 'vsg', 'ck': 'cpk',
+  'hdl': 'colesterol hdl', 'ldl': 'colesterol ldl',
+  'testosterona total': 'testosterona', 'hemoglobin': 'hemoglobina', 'hgb': 'hemoglobina',
+  'testosterone': 'testosterona', 'creatinine': 'creatinina', 'tsh ultrasensible': 'tsh',
+  'triglycerides': 'trigliceridos', 'vitamin d': 'vitamina d',
+};
+export function canonicalMarkerName(name: string): string {
+  const normalized = normalizeMarker(name);
+  return MARKER_ALIASES[normalized] ?? normalized;
+}
+export function nameMatch(biomarkerName: string, systemNames: string[]): boolean {
+  const key = canonicalMarkerName(biomarkerName);
+  return !!key && systemNames.some(name => canonicalMarkerName(name) === key);
 }
 
 export function getSystemStatus(system: BodySystem, biomarkers: Biomarker[]): SystemStatus {
@@ -326,4 +348,22 @@ export function computeHealthScore(biomarkers: Biomarker[]): number {
     }
   });
   return Math.round(scores.reduce((a, v) => a + v, 0) / scores.length);
+}
+
+export function getSampleTypeLabel(type: string, language: 'en' | 'es') {
+  const labels: Record<string, { en: string; es: string }> = {
+    blood: { en: 'Blood', es: 'Sangre' },
+    urine: { en: 'Urine', es: 'Orina' },
+    stool: { en: 'Stool', es: 'Heces' },
+    saliva: { en: 'Saliva', es: 'Saliva' },
+  };
+  return labels[type]?.[language] ?? type;
+}
+
+/** Compare scores only when the same markers and units were measured. */
+export function comparableScoreDelta(current?: Biomarker[], previous?: Biomarker[]): number | null {
+  if (!current?.length || !previous?.length) return null;
+  const keys = (rows: Biomarker[]) => rows.map(b => `${canonicalMarkerName(b.name)}|${b.unit.trim().toLowerCase()}`).sort();
+  if (JSON.stringify(keys(current)) !== JSON.stringify(keys(previous))) return null;
+  return computeHealthScore(current) - computeHealthScore(previous);
 }

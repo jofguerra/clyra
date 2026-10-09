@@ -1,3 +1,6 @@
+import Mascot from '../../components/Mascot';
+import LocalModeNotice from '../../components/LocalModeNotice';
+import { isLocalMode } from '../../services/supabase';
 import React, { useState } from 'react';
 import {
     View,
@@ -129,6 +132,22 @@ export default function AuthScreen() {
         setMode((m) => (m === 'signup' ? 'signin' : 'signup'));
         setError(null);
     };
+
+    if (isLocalMode) {
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.content}>
+                    <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                        <Mascot pose="waving" size={160} animation="idle-breath" />
+                    </View>
+                    <LocalModeNotice message={t('localStorageInfo')} />
+                    <Button title={t('continueLocally')} onPress={() => router.replace(
+                        store.hasCompletedOnboarding ? '/(tabs)' : '/onboarding/profile'
+                    )} />
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     const title = mode === 'signup' ? t('authSignUp') : t('authSignIn');
 

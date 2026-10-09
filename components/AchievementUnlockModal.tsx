@@ -14,9 +14,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
     View, Text, StyleSheet, Animated, Modal, TouchableWithoutFeedback,
-    Dimensions, Image,
+    Image,
 } from 'react-native';
-import LottieView from 'lottie-react-native';
+import LottieView from './LottieAnimation';
 import Svg, { Polygon } from 'react-native-svg';
 import { useSegments } from 'expo-router';
 import { Colors } from '../constants/colors';
@@ -25,7 +25,7 @@ import { Motion, SPRING_PLAYFUL } from '../constants/motion';
 import { ACHIEVEMENTS } from '../constants/gamification';
 import { useStore } from '../hooks/useStore';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+
 
 const BADGE_IMAGES: Record<string, any> = {
     first_exam: require('../assets/badges/first_exam.png'),
@@ -327,7 +327,8 @@ const styles = StyleSheet.create({
     content: {
         alignItems: 'center',
         paddingHorizontal: 32,
-        width: SCREEN_W,
+        width: '100%',
+        maxWidth: 520,
     },
     glow: {
         position: 'absolute',

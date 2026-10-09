@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, ScrollView,
-  TouchableOpacity, Alert, TextInput, Modal,
+  TouchableOpacity, Alert, TextInput, Modal, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Trash2, Edit3, Check, X, ChevronRight } from 'lucide-react-native';
@@ -64,6 +64,7 @@ function BiomarkerRow({
         {editing ? (
           <View style={styles.editRow}>
             <TextInput
+              accessibilityLabel={`${biomarker.name} value`}
               style={styles.editInput}
               value={draft}
               onChangeText={setDraft}
@@ -71,7 +72,7 @@ function BiomarkerRow({
               selectTextOnFocus
             />
             <Text style={styles.bioUnit}>{biomarker.unit}</Text>
-            <TouchableOpacity onPress={() => onEdit(draft)} style={styles.editConfirm}>
+            <TouchableOpacity accessibilityLabel={`Confirm ${biomarker.name}`} onPress={() => onEdit(draft)} style={styles.editConfirm}>
               <Check size={14} color={Colors.optimal} />
             </TouchableOpacity>
           </View>
@@ -149,6 +150,14 @@ export default function TestDetailScreen() {
   };
 
   const handleDelete = () => {
+    const remove = () => {
+      setSessions(sessions.filter(s => s.id !== id));
+      router.replace('/(tabs)/upload');
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(t('deleteTestConfirm'))) remove();
+      return;
+    }
     Alert.alert(
       t('deleteTest'),
       t('deleteTestConfirm'),
@@ -157,10 +166,7 @@ export default function TestDetailScreen() {
         {
           text: language === 'es' ? 'Eliminar' : 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setSessions(sessions.filter(s => s.id !== id));
-            router.back();
-          },
+          onPress: remove,
         },
       ]
     );

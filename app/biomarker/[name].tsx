@@ -1,3 +1,6 @@
+import { exactResultNumber, resultDirection } from '../../constants/resultTrends';
+import LocalModeNotice from '../../components/LocalModeNotice';
+import { isLocalMode } from '../../services/supabase';
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView, TouchableOpacity,
@@ -39,36 +42,21 @@ function RangeBar({ status, value, referenceRange, t, language }: {
   status: string; value: string | number; referenceRange?: string;
   t: ReturnType<typeof useT>; language: string;
 }) {
-  const pos = { low: 0.08, normal: 0.45, borderline: 0.72, high: 0.92 }[status] ?? 0.5;
-  const zones = [
-    { label: t('rangeZoneLow'),        sub: '< min', color: Colors.attention },
-    { label: t('rangeZoneNormal'),     sub: referenceRange ?? '—', color: Colors.optimal },
-    { label: t('rangeZoneBorderline'), sub: '± range', color: Colors.borderline },
-    { label: t('rangeZoneHigh'),       sub: '> max', color: Colors.attention },
+  const items = [
+    { id: 'low', label: t('rangeZoneLow'), color: '#9C4EAB' },
+    { id: 'normal', label: t('rangeZoneNormal'), color: Colors.optimal },
+    { id: 'borderline', label: t('rangeZoneBorderline'), color: '#946600' },
+    { id: 'high', label: t('rangeZoneHigh'), color: Colors.attention },
   ];
-  return (
-    <View style={styles.rangeWrap}>
-      <LinearGradient
-        colors={['#ba1a1a', '#eab308', '#006947', '#eab308', '#ba1a1a']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-        style={styles.rangeBar}
-      />
-      {/* Marker */}
-      <View style={[styles.markerWrap, { left: `${pos * 100}%` as any }]}>
-        <View style={styles.markerBubble}><Text style={styles.markerText}>{translateBiomarkerValue(value, language)}</Text></View>
-        <View style={styles.markerLine} />
-      </View>
-      {/* Zone labels */}
-      <View style={styles.rangeLabels}>
-        {zones.map(z => (
-          <View key={z.label} style={styles.rangeLabelCol}>
-            <Text style={[styles.zoneName, { color: z.color }]}>{z.label}</Text>
-            <Text style={styles.zoneSub}>{z.sub}</Text>
-          </View>
-        ))}
-      </View>
+  return <View style={{ gap: 12, marginVertical: 12 }}>
+    <Text style={{ fontSize: 12, color: Colors.mutedForeground }}>{language === 'es' ? 'Estado registrado en tu resultado' : 'Recorded result status'}</Text>
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {items.map(item => <View key={item.id} style={{ width: '47%', padding: 10, borderRadius: 12, borderWidth: item.id === status ? 2 : 1, borderColor: item.id === status ? item.color : Colors.border, backgroundColor: item.id === status ? item.color + '12' : '#FFF' }}>
+        <Text style={{ fontSize: 12, fontWeight: item.id === status ? '700' : '400', color: item.id === status ? item.color : Colors.mutedForeground }}>{item.id === status ? '● ' : ''}{item.label}</Text>
+      </View>)}
     </View>
-  );
+    <Text style={{ fontSize: 13, color: Colors.foreground }}>{language === 'es' ? 'Referencia del laboratorio: ' : 'Laboratory reference: '}{referenceRange || (language === 'es' ? 'No registrada' : 'Not recorded')}</Text>
+  </View>;
 }
 
 // ─── History timeline row ─────────────────────────────────────────────────────
@@ -89,7 +77,7 @@ function TimelineRow({ date, value, unit, status, isFirst, isLast, t, language, 
   const timeStr = new Date(date).toLocaleDateString(language === 'es' ? 'es' : 'en', { month: 'long', year: 'numeric' });
 
   // Calculate proportional bar width relative to all history values
-  const numericVal = parseBiomarkerNumber(value);
+  const numericVal = exactResultNumber(value);
   const maxVal = Math.max(...allValues);
   const barPercent = !isNaN(numericVal) && maxVal > 0
     ? Math.min(Math.max((numericVal / maxVal) * 100, 15), 100)
@@ -190,55 +178,8 @@ function TrendBadge({ current, previous, t }: {
 
 // ─── Aging velocity / trend warning ──────────────────────────────────────────
 
-type TrendDirection = 'rising' | 'declining' | 'improving_from_high' | 'improving_from_low' | null;
-
-function detectAgingVelocity(
-  history: { date: string; biomarker: Biomarker }[],
-): { direction: TrendDirection; count: number } {
-  if (history.length < 3) return { direction: null, count: 0 };
-
-  // history[0] = newest, so we need chronological order (oldest first)
-  const chronological = [...history].reverse();
-  const values = chronological.map(h => parseBiomarkerNumber(h.biomarker.value));
-  const statuses = chronological.map(h => h.biomarker.status);
-
-  // All values must be parseable
-  if (values.some(isNaN)) return { direction: null, count: 0 };
-
-  // Compute deltas between consecutive values
-  const deltas: number[] = [];
-  for (let i = 1; i < values.length; i++) {
-    deltas.push(values[i] - values[i - 1]);
-  }
-
-  const allRising   = deltas.every(d => d > 0.001);
-  const allDecline  = deltas.every(d => d < -0.001);
-
-  if (!allRising && !allDecline) return { direction: null, count: 0 };
-
-  const latestStatus = statuses[statuses.length - 1];
-  const count = history.length;
-
-  if (allRising) {
-    // Was previously high/borderline and now improving → positive
-    const prevHigh = statuses.slice(0, -1).some(s => s === 'high' || s === 'borderline');
-    if (prevHigh && (latestStatus === 'normal' || latestStatus === 'borderline')) {
-      return { direction: 'improving_from_high', count };
-    }
-    // Normal but rising → early warning
-    return { direction: 'rising', count };
-  }
-
-  if (allDecline) {
-    // Was previously low and now improving → positive
-    const prevLow = statuses.slice(0, -1).some(s => s === 'low' || s === 'borderline');
-    if (prevLow && (latestStatus === 'normal' || latestStatus === 'borderline')) {
-      return { direction: 'improving_from_low', count };
-    }
-    return { direction: 'declining', count };
-  }
-
-  return { direction: null, count: 0 };
+function detectAgingVelocity(history: { date: string; biomarker: Biomarker }[]) {
+  return { direction: resultDirection(history.map(h => h.biomarker)), count: history.length };
 }
 
 function AgingVelocityCard({
@@ -261,7 +202,8 @@ function AgingVelocityCard({
   const bgColor     = isPositive ? Colors.optimal10   : Colors.attention10;
   const borderColor = isPositive ? Colors.optimal      : Colors.attention;
   const titleColor  = isPositive ? Colors.optimal      : Colors.attention;
-  const icon        = isPositive ? <TrendingDown size={16} color={Colors.optimal} /> : <TrendingUp size={16} color={Colors.attention} />;
+  const DirectionIcon = direction === 'rising' || direction === 'improving_from_low' ? TrendingUp : TrendingDown;
+  const icon = <DirectionIcon size={16} color={titleColor} />;
   const title       = isPositive ? t('trendPositive') : t('trendWarning');
 
   return (
@@ -329,6 +271,10 @@ function AIInsightCard({
       setLoading(false);
     }
   };
+
+  if (isLocalMode) {
+    return <LocalModeNotice message={t('localInsightsUnavailable')} />;
+  }
 
   if (insight) {
     return (
@@ -412,8 +358,8 @@ export default function BiomarkerDetailScreen() {
     })
     .filter(Boolean) as { date: string; biomarker: Biomarker }[];
 
-  const currentNumeric = parseBiomarkerNumber(biomarkerData.value);
-  const previousNumeric = history[1] ? parseBiomarkerNumber(history[1].biomarker.value) : null;
+  const currentNumeric = exactResultNumber(biomarkerData.value, biomarkerData.referenceRange);
+  const previousNumeric = history[1] && history[1].biomarker.unit.trim().toLowerCase() === biomarkerData.unit.trim().toLowerCase() ? exactResultNumber(history[1].biomarker.value, history[1].biomarker.referenceRange) : null;
   const lastTestDate = history[0]?.date ?? null;
 
   const plainMessage = getStatusMessage(decodedName, biomarkerData.status, language);
@@ -562,7 +508,7 @@ export default function BiomarkerDetailScreen() {
 
             <View style={styles.timeline}>
               {(() => {
-                const allValues = history.map(h => parseBiomarkerNumber(h.biomarker.value)).filter(n => !isNaN(n));
+                const allValues = history.filter(h => h.biomarker.unit === biomarkerData.unit).map(h => exactResultNumber(h.biomarker.value, h.biomarker.referenceRange)).filter(n => !isNaN(n));
                 return history.map(({ date, biomarker }, i) => (
                   <TimelineRow
                     key={date + i}

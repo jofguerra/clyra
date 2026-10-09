@@ -3,10 +3,10 @@
 // Kept a teal "accent" for places that need a secondary emphasis color.
 export const Colors = {
     // Core — coral pink (matches the heart mascot illustration)
-    primary: '#E66E93',            // coral pink — mascot-aligned
+    primary: '#BD416C',            // coral pink — mascot-aligned
     primaryForeground: '#FFFFFF',
-    background: '#FAFBFC',
-    foreground: '#1A1D23',
+    background: '#F7F8FA',
+    foreground: '#252A38',
 
     // Surfaces
     surface: '#FFFFFF',
@@ -39,9 +39,9 @@ export const Colors = {
     muted: '#F1F3F5',
 
     // Opacity variants
-    primary10: '#E66E9315',
-    primary15: '#E66E9325',
-    primaryContainer: '#E66E9320',
+    primary10: '#BD416C12',
+    primary15: '#BD416C20',
+    primaryContainer: '#BD416C18',
     optimal10: '#05966915',
     borderline10: '#D9770615',
     attention10: '#DC262615',

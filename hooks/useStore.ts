@@ -1,8 +1,10 @@
+import { localDayKey, localWeekKey, nextActiveWeeks } from '../constants/activityDates';
+import { isLocalMode } from '../services/supabase';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Biomarker } from '../services/openai';
-import { computeHealthScore } from '../constants/biomarkerSystems';
+import { computeHealthScore, canonicalMarkerName, BODY_SYSTEMS, getSystemStatus } from '../constants/biomarkerSystems';
 import { Lang } from '../constants/i18n';
 import { XP_ACTIONS } from '../constants/gamification';
 import {
@@ -53,6 +55,7 @@ interface UserState {
   completedMissions: string[];
   /** Count of weekly-type mission events in the current ISO week. */
   weeklyMissionCount: number;
+  weeklyMissionWeek: string | null;
   lastActiveDate: string | null;
   activeWeeks: number;
   // Test reminder
@@ -120,6 +123,7 @@ export const useStore = create<UserState>()(
       achievements: [],
       completedMissions: [],
       weeklyMissionCount: 0,
+      weeklyMissionWeek: null,
       lastActiveDate: null,
       activeWeeks: 0,
       // Test reminder
@@ -167,7 +171,7 @@ export const useStore = create<UserState>()(
 
         // Merge biomarkers: keep existing, update/add from new ones
         // Normalize names for matching (trim whitespace, lowercase, strip accents for comparison)
-        const norm = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const norm = canonicalMarkerName;
         const merged = [...state.biomarkers];
         const updatedNames: string[] = [];
         const addedNames: string[] = [];
@@ -175,8 +179,14 @@ export const useStore = create<UserState>()(
           const newNorm = norm(newBm.name);
           const idx = merged.findIndex(b => norm(b.name) === newNorm);
           if (idx >= 0) {
-            merged[idx] = newBm; // Update existing biomarker with new value
-            updatedNames.push(newBm.name);
+            // A historical import belongs in history but must not replace a newer result.
+            const newestExistingDate = state.sessions
+              .filter(exam => exam.biomarkers.some(b => norm(b.name) === newNorm))
+              .reduce((latest, exam) => Math.max(latest, new Date(exam.date).getTime()), -Infinity);
+            if (sessionDate.getTime() >= newestExistingDate) {
+              merged[idx] = newBm;
+              updatedNames.push(newBm.name);
+            }
           } else {
             merged.push(newBm); // Add new biomarker
             addedNames.push(newBm.name);
@@ -186,7 +196,8 @@ export const useStore = create<UserState>()(
 
         // Check for improved markers vs previous exam
         let improvedCount = 0;
-        if (state.sessions.length > 0) {
+        const isHistoricalExam = state.sessions.some(exam => new Date(exam.date).getTime() > sessionDate.getTime());
+        if (state.sessions.length > 0 && !isHistoricalExam) {
           const prevBiomarkers = state.sessions[0].biomarkers;
           for (const b of val) {
             const prev = prevBiomarkers.find(p => norm(p.name) === norm(b.name));
@@ -215,18 +226,18 @@ export const useStore = create<UserState>()(
         }
 
         // Check system-level achievements (use merged biomarkers for full picture)
-        const allNormalInSystem = (names: string[]) =>
-          merged.filter(b => names.some(n => b.name.toLowerCase().includes(n.toLowerCase())))
-             .every(b => b.status === 'normal') &&
-          merged.some(b => names.some(n => b.name.toLowerCase().includes(n.toLowerCase())));
+        const allNormalInSystem = (id: string) => {
+          const system = BODY_SYSTEMS.find(s => s.id === id);
+          return !!system && getSystemStatus(system, merged) === 'normal';
+        };
 
-        if (allNormalInSystem(['colesterol', 'ldl', 'hdl', 'triglicér', 'pcr']) && !newAchievements.includes('heart_green')) {
+        if (allNormalInSystem('cardiovascular') && !newAchievements.includes('heart_green')) {
           newAchievements.push('heart_green');
         }
-        if (allNormalInSystem(['creatinina', 'úrico', 'urea', 'bun']) && !newAchievements.includes('kidneys_green')) {
+        if (allNormalInSystem('renal') && !newAchievements.includes('kidneys_green')) {
           newAchievements.push('kidneys_green');
         }
-        if (allNormalInSystem(['glucosa', 'a1c', 'insulina']) && !newAchievements.includes('metabolic_reboot')) {
+        if (allNormalInSystem('metabolico') && !newAchievements.includes('metabolic_reboot')) {
           newAchievements.push('metabolic_reboot');
         }
 
@@ -243,7 +254,7 @@ export const useStore = create<UserState>()(
         set({
           biomarkers: merged,
           healthScore: mergedScore,
-          sessions: [session, ...state.sessions],
+          sessions: [session, ...state.sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
           xp: state.xp + xpGain + improveXP,
           achievements: newAchievements,
           recentlyUpdatedBiomarkers: updatedNames,
@@ -256,7 +267,7 @@ export const useStore = create<UserState>()(
 
         // Fire-and-forget push so the new session, biomarkers, XP and unlocked
         // achievements all land on the server. Skip for guests.
-        if (!state.isGuest) {
+        if (!isLocalMode && !state.isGuest) {
           get().syncToCloud().catch((err) =>
             console.warn('[Clyra] post-exam sync failed:', err),
           );
@@ -264,8 +275,9 @@ export const useStore = create<UserState>()(
       },
 
       setSessions: (sessions) => {
+        sessions = [...sessions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         // Rebuild merged biomarkers from all sessions (latest values win)
-        const norm = (s: string) => s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const norm = canonicalMarkerName;
         const merged: Biomarker[] = [];
         // Process sessions from oldest to newest so latest values overwrite
         for (let i = sessions.length - 1; i >= 0; i--) {
@@ -285,7 +297,9 @@ export const useStore = create<UserState>()(
         });
       },
 
-      addXP: (amount) => set((state) => ({ xp: state.xp + amount })),
+      addXP: (amount) => {
+        if (Number.isFinite(amount) && amount > 0) set(state => ({ xp: state.xp + Math.floor(amount) }));
+      },
 
       unlockAchievement: (id) => set((state) => {
         if (state.achievements.includes(id)) return state;
@@ -296,9 +310,12 @@ export const useStore = create<UserState>()(
       }),
 
       completeMission: (id, type, xpOverride) => {
+        get().updateStreak();
         const state = get();
         if (state.completedMissions.includes(id)) return;
         const xpGain = xpOverride ?? 150;
+        if (!Number.isFinite(xpGain) || xpGain <= 0) return;
+        if (type === 'weekly' && state.weeklyMissionCount >= 3) return;
         // Optimistic local update
         set({
           completedMissions: [...state.completedMissions, id],
@@ -307,7 +324,7 @@ export const useStore = create<UserState>()(
             type === 'weekly' ? state.weeklyMissionCount + 1 : state.weeklyMissionCount,
         });
         // Fire-and-forget server sync (skip for guest users)
-        if (!state.isGuest) {
+        if (!isLocalMode && !state.isGuest) {
           recordMissionEvent(id, type, xpGain)
             .then((res) => {
               // Reconcile XP with server (handles clock drift / multi-device)
@@ -319,25 +336,18 @@ export const useStore = create<UserState>()(
 
       updateStreak: () => {
         const state = get();
-        const today = new Date().toISOString().split('T')[0];
-        // If a new day started since we last ran, clear today's daily-mission
-        // checklist — the server is still authoritative, this just hides stale
-        // checks until the next pull.
-        if (state.lastActiveDate !== today && state.completedMissions.length > 0) {
-          set({ completedMissions: [] });
+        const now = new Date();
+        const today = localDayKey(now);
+        const week = localWeekKey(now);
+        if ((isLocalMode || state.isGuest) && state.weeklyMissionWeek !== week) {
+          set({ weeklyMissionCount: 0, weeklyMissionWeek: week });
         }
+        if (state.lastActiveDate !== today) set({ completedMissions: [] });
         if (state.lastActiveDate === today) return;
-        const lastDate = state.lastActiveDate ? new Date(state.lastActiveDate) : null;
-        const daysSinceLast = lastDate
-          ? Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24))
-          : 999;
-        const newActiveWeeks = daysSinceLast <= 7 ? state.activeWeeks + 1 : 1;
-        set({
-          lastActiveDate: today,
-          activeWeeks: newActiveWeeks,
-        });
+        const newActiveWeeks = nextActiveWeeks(state.lastActiveDate, state.activeWeeks, now);
+        set({ lastActiveDate: today, activeWeeks: newActiveWeeks });
         // Push to server so streak survives app reinstall / device change.
-        if (!state.isGuest) {
+        if (!isLocalMode && !state.isGuest) {
           updateProfile({
             last_active_date: today,
             active_weeks: newActiveWeeks,
@@ -346,6 +356,8 @@ export const useStore = create<UserState>()(
       },
 
       refreshWeeklyMissionCount: async () => {
+        get().updateStreak();
+        if (isLocalMode || get().isGuest) return;
         try {
           const count = await getWeeklyMissionCount('weekly');
           set({ weeklyMissionCount: count });
@@ -377,6 +389,7 @@ export const useStore = create<UserState>()(
       },
 
       syncToCloud: async () => {
+        if (isLocalMode || get().isGuest) return;
         try {
           const state = get();
           await pushLocalToCloud({
@@ -400,6 +413,7 @@ export const useStore = create<UserState>()(
       },
 
       syncFromCloud: async () => {
+        if (isLocalMode || get().isGuest) return;
         try {
           const cloudData = await pullCloudToLocal();
           if (!cloudData) return;
@@ -473,6 +487,7 @@ export const useStore = create<UserState>()(
         achievements: [],
         completedMissions: [],
         weeklyMissionCount: 0,
+        weeklyMissionWeek: null,
         isPro: false,
         subscriptionPlan: null,
         subscriptionExpiresAt: null,
@@ -486,6 +501,12 @@ export const useStore = create<UserState>()(
     {
       name: 'clyra-storage',
       storage: createJSONStorage(() => AsyncStorage),
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<UserState>),
+        // Keep local health data, but never reuse a cloud identity offline.
+        ...(isLocalMode ? { authUserId: null, isGuest: true, lastSyncedAt: null } : {}),
+      }),
     }
   )
 );

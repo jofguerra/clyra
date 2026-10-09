@@ -61,7 +61,7 @@ export default function Button({
 
     const handlePressIn = () => {
         Animated.timing(scale, {
-            toValue: 0.96,
+            toValue: 0.98,
             duration: 100,
             useNativeDriver: true,
         }).start();
@@ -71,7 +71,7 @@ export default function Button({
         // Spring back with a tiny overshoot to 1.04, then settle to 1
         Animated.sequence([
             Animated.spring(scale, {
-                toValue: 1.04,
+                toValue: 1.01,
                 damping: 10,
                 mass: 0.6,
                 stiffness: 240,
@@ -87,6 +87,8 @@ export default function Button({
     return (
         <Animated.View style={{ transform: [{ scale }] }}>
             <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: disabled || isLoading }}
                 style={({ pressed }) => [
                     styles.base,
                     styles[size],
@@ -120,7 +122,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 12,
+        borderRadius: 16,
         gap: 8,
     },
     sm: {

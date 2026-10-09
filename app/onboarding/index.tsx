@@ -1,10 +1,10 @@
+import { useAppWidth } from '../../hooks/useAppWidth';
 import React, { useRef, useState } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     SafeAreaView,
-    Dimensions,
     ScrollView,
     NativeSyntheticEvent,
     NativeScrollEvent,
@@ -21,7 +21,7 @@ import Mascot from '../../components/Mascot';
 import { Typography } from '../../constants/typography';
 import { useStore } from '../../hooks/useStore';
 
-const { width } = Dimensions.get('window');
+
 
 /**
  * Onboarding — 4-slide intro that introduces the mascot and app purpose.
@@ -79,6 +79,7 @@ const SLIDES: {
 ];
 
 export default function WelcomeScreen() {
+    const width = useAppWidth();
     const router = useRouter();
     const language = useStore((s) => s.language);
     const scrollRef = useRef<ScrollView>(null);
@@ -169,7 +170,7 @@ export default function WelcomeScreen() {
                         const title = language === 'es' ? slide.titleEs : slide.titleEn;
                         const sub = language === 'es' ? slide.subEs : slide.subEn;
                         return (
-                            <View key={i} style={styles.slide}>
+                            <View key={i} style={[styles.slide, { width }]}>
                                 <TouchableOpacity
                                     activeOpacity={1}
                                     onPress={handleLogoTap}
@@ -248,7 +249,6 @@ const styles = StyleSheet.create({
     scrollView: { flex: 1 },
 
     slide: {
-        width,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 32,

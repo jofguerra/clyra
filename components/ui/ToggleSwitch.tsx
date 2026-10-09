@@ -4,10 +4,11 @@ import { Colors } from '../../constants/colors';
 
 interface ToggleSwitchProps {
     value: boolean;
+    disabled?: boolean;
     onValueChange: (val: boolean) => void;
 }
 
-export default function ToggleSwitch({ value, onValueChange }: ToggleSwitchProps) {
+export default function ToggleSwitch({ value, onValueChange, disabled = false }: ToggleSwitchProps) {
     const [animatedValue] = React.useState(new Animated.Value(value ? 1 : 0));
 
     React.useEffect(() => {
@@ -30,6 +31,10 @@ export default function ToggleSwitch({ value, onValueChange }: ToggleSwitchProps
 
     return (
         <TouchableOpacity
+            accessibilityRole="switch"
+            accessibilityState={{ checked: value, disabled }}
+            disabled={disabled}
+            style={{ minHeight: 44, minWidth: 44, justifyContent: 'center', alignItems: 'center', opacity: disabled ? 0.45 : 1 }}
             activeOpacity={0.8}
             onPress={() => onValueChange(!value)}
         >

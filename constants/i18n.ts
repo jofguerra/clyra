@@ -2,6 +2,19 @@ export type Lang = 'en' | 'es';
 
 export const translations = {
   en: {
+    manualEntryTitle: 'Manual entry',
+    localNoTests: 'Enter results manually, or import a Raly text PDF on web, to start your history.',
+    localInsightsUnavailable: 'Personalized AI insights are unavailable in local mode. Your results and educational information remain available below.',
+    purchasesUnavailable: 'Purchases coming soon',
+    purchasesPreview: 'Plan preview only. Purchases and free trials are not available yet; no payment will be taken.',
+    settingsPreview: 'Coming soon. These controls are a preview and do not change the app yet.',
+
+    localMode: 'Local mode',
+    localStorageInfo: 'Your data is saved only on this device. Accounts and cloud backup are unavailable.',
+    localAIUnavailable: 'AI chat and photo analysis are unavailable in local mode. Enter results manually or import a Raly text PDF on web.',
+    continueLocally: 'Continue locally',
+    manualEntry: 'Enter results manually',
+
     // Tabs
     tabHealth: 'Health',
     tabActions: 'Actions',
@@ -450,6 +463,19 @@ export const translations = {
     neverSynced: 'Never',
   },
   es: {
+    manualEntryTitle: 'Ingreso manual',
+    localNoTests: 'Ingresa resultados manualmente o importa un PDF Raly con texto en la web para comenzar tu historial.',
+    localInsightsUnavailable: 'Las explicaciones personalizadas con IA no están disponibles en modo local. Puedes consultar tus resultados e información educativa a continuación.',
+    purchasesUnavailable: 'Compras próximamente',
+    purchasesPreview: 'Vista previa de planes. Las compras y pruebas gratis aún no están disponibles; no se realizará ningún cobro.',
+    settingsPreview: 'Próximamente. Estos controles son una vista previa y todavía no cambian la app.',
+
+    localMode: 'Modo local',
+    localStorageInfo: 'Tus datos se guardan solo en este dispositivo. Las cuentas y el respaldo en la nube no están disponibles.',
+    localAIUnavailable: 'El chat con IA y el análisis de fotos no están disponibles en modo local. Ingresa resultados manualmente o importa un PDF Raly con texto en la web.',
+    continueLocally: 'Continuar localmente',
+    manualEntry: 'Ingresar resultados manualmente',
+
     // Tabs
     tabHealth: 'Salud',
     tabActions: 'Acciones',
@@ -680,7 +706,7 @@ export const translations = {
     filterAll: 'Todos',
     riskSectionSub: 'Toca cualquier card para ver detalles y recomendaciones',
     // Trends / Progress
-    scoreHistory: 'Historial de Score',
+    scoreHistory: 'Historial del puntaje',
     projectedNext: 'proyectado',
     nextTestIn: 'Recomendado: repetir análisis en ~{n} meses',
     actionsTitle: 'Plan de Acción',

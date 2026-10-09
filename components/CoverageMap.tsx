@@ -27,7 +27,7 @@ export default function CoverageMap({ biomarkers, language, onSystemPress }: Cov
     };
   }).sort((a, b) => a.percentage - b.percentage);
 
-  const overallLabel = language === 'es' ? 'Cobertura Total' : 'Overall Coverage';
+  const overallLabel = language === 'es' ? 'Cobertura del catálogo' : 'Catalog coverage';
   const addTestsLabel = language === 'es' ? 'Agregar análisis' : 'Add tests';
 
   return (
@@ -35,6 +35,7 @@ export default function CoverageMap({ biomarkers, language, onSystemPress }: Cov
       <View style={styles.overallSection}>
         <Text style={styles.overallPercent}>{overall.percentage}%</Text>
         <Text style={styles.overallLabel}>{overallLabel}</Text>
+        <Text style={{ fontSize: 12, lineHeight: 18, color: Colors.mutedForeground, textAlign: 'center', marginTop: 8 }}>{language === 'es' ? 'Resultados disponibles del catálogo de Clyra. No indica qué análisis necesitas realizarte.' : 'Available results from the Clyra catalog. This does not indicate which tests you need.'}</Text>
       </View>
 
       <View style={styles.systemsList}>
@@ -49,7 +50,7 @@ export default function CoverageMap({ biomarkers, language, onSystemPress }: Cov
             <View style={styles.systemInfo}>
               <View style={styles.systemHeader}>
                 <Text style={styles.systemName} numberOfLines={1}>{sys.name}</Text>
-                <Text style={styles.systemPercent}>{sys.percentage}%</Text>
+                <Text style={styles.systemPercent}>{sys.covered}/{sys.total} · {sys.percentage}%</Text>
               </View>
               <View style={styles.barTrack}>
                 <View

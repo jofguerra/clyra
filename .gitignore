@@ -48,3 +48,13 @@ Animations and Assets/*.zip
 
 # Local env example also keep ignored
 .env
+
+# Browser test outputs
+/test-results/
+/playwright-report/
+
+# Copied from the locked Lottie dependency by postinstall
+/public/dotlottie-player.wasm
+
+/public/pdf.mjs
+/public/pdf.worker.min.mjs

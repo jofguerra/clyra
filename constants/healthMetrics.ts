@@ -6,7 +6,7 @@
  */
 
 import { Biomarker } from '../services/openai';
-import { BodySystem, BODY_SYSTEMS, computeHealthScore } from './biomarkerSystems';
+import { BodySystem, BODY_SYSTEMS, computeHealthScore, canonicalMarkerName } from './biomarkerSystems';
 
 // ── Optimal Percentage ──────────────────────��─────────────────────────────────
 
@@ -291,14 +291,10 @@ export function computeSystemCoverage(
   biomarkers: Biomarker[],
   system: BodySystem,
 ): SystemCoverage {
-  const total = system.biomarkerNames.length;
-  const covered = system.biomarkerNames.filter(sysName => {
-    const s = sysName.toLowerCase();
-    return biomarkers.some(b => {
-      const bn = b.name.toLowerCase();
-      return bn === s || bn.includes(s) || s.includes(bn);
-    });
-  }).length;
+  const expected = new Set(system.biomarkerNames.map(canonicalMarkerName));
+  const available = new Set(biomarkers.map(b => canonicalMarkerName(b.name)));
+  const total = expected.size;
+  const covered = [...expected].filter(name => available.has(name)).length;
   const percentage = total > 0 ? Math.round((covered / total) * 100) : 0;
   return { covered, total, percentage };
 }
@@ -350,10 +346,7 @@ export function simulateImprovement(
 
   const lowerNames = markersToNormalize.map(n => n.toLowerCase());
   const modified = biomarkers.map(b => {
-    const bn = b.name.toLowerCase();
-    const shouldNormalize = lowerNames.some(
-      n => bn === n || bn.includes(n) || n.includes(bn),
-    );
+    const shouldNormalize = lowerNames.some(n => canonicalMarkerName(b.name) === canonicalMarkerName(n));
     return shouldNormalize ? { ...b, status: 'normal' as const } : b;
   });
 
@@ -398,7 +391,7 @@ function getMarkerSystemEmoji(markerName: string): string {
   for (const sys of BODY_SYSTEMS) {
     const match = sys.biomarkerNames.some(n => {
       const s = n.toLowerCase();
-      return lower === s || lower.includes(s) || s.includes(lower);
+      return canonicalMarkerName(lower) === canonicalMarkerName(s);
     });
     if (match) return SYSTEM_EMOJI_MAP[sys.id] || '🔬';
   }

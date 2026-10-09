@@ -5,8 +5,8 @@ export const Typography = {
     families: {
         // using system fonts for React Native by default if we haven't loaded them, 
         // but typically we would use 'DMSans-Bold' etc. once loaded.
-        display: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-        body: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+        display: Platform.OS === 'web' ? 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' : Platform.OS === 'ios' ? 'System' : 'sans-serif',
+        body: Platform.OS === 'web' ? 'system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif' : Platform.OS === 'ios' ? 'System' : 'sans-serif',
     },
     sizes: {
         xs: 10,

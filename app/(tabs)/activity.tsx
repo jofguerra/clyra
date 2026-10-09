@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import { isLocalMode } from '../../services/supabase';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, SafeAreaView,
   TouchableOpacity, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import LottieView from 'lottie-react-native';
+import LottieView from '../../components/LottieAnimation';
 import { useRouter } from 'expo-router';
 import {
   Upload, Flame, Check, Ban, Footprints,
@@ -18,7 +19,8 @@ import { useT } from '../../hooks/useT';
 import { getTopPriorities } from '../../constants/healthMetrics';
 import { BODY_SYSTEMS, getSystemBiomarkers } from '../../constants/biomarkerSystems';
 import { getBiomarkerKnowledge } from '../../constants/biomarkerKnowledge';
-import { getXPLevel } from '../../constants/gamification';
+import XPBar from '../../components/ui/XPBar';
+import { localDayKey } from '../../constants/activityDates';
 
 // ─── Mini mission templates (shown as daily checklist in the reference) ──────
 // These are lightweight, checkable goals — not the long-term MISSION_TEMPLATES.
@@ -53,11 +55,16 @@ export default function ActivityScreen() {
   const activeWeeks = useStore(s => s.activeWeeks);
   const hasBiomarkers = biomarkers.length > 0;
 
-  // Refresh weekly count on mount so the bar reflects server truth
-  useEffect(() => { refreshWeeklyMissionCount(); }, [refreshWeeklyMissionCount]);
+  const [todayIso, setTodayIso] = useState(localDayKey());
+  // Also roll over while the screen remains open across local midnight.
+  useEffect(() => {
+    const refresh = () => { setTodayIso(localDayKey()); refreshWeeklyMissionCount(); };
+    refresh(); const timer = setInterval(refresh, 60_000);
+    return () => clearInterval(timer);
+  }, [refreshWeeklyMissionCount]);
 
   // ── Level progress ──
-  const levelInfo = getXPLevel(xp);
+
 
   // ── Top priority biomarker (the one to focus on today) ──
   const priorities = hasBiomarkers ? getTopPriorities(biomarkers, sessions, language) : [];
@@ -67,7 +74,6 @@ export default function ActivityScreen() {
     : null;
   const topKnowledge = topPriorityMarker ? getBiomarkerKnowledge(topPriorityMarker.name) : null;
   // Date-qualified ID so "done" only applies to TODAY's priority — resets at midnight.
-  const todayIso = new Date().toISOString().split('T')[0];
   const todayPriorityDoneId = topPriorityMarker
     ? `priority_${topPriorityMarker.name}_${todayIso}`
     : null;
@@ -86,6 +92,7 @@ export default function ActivityScreen() {
       }).length
     : 0;
   const markDone = (id: string, type: 'daily' | 'priority' | 'weekly', xpAmount: number) => {
+    setTodayIso(localDayKey());
     completeMission(id, type, xpAmount);
     Alert.alert(
       language === 'es' ? '\u00a1Bien hecho!' : 'Well done!',
@@ -97,14 +104,17 @@ export default function ActivityScreen() {
   if (!hasBiomarkers) {
     return (
       <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, paddingBottom: 130 }}>
         <View style={styles.headerBlock}>
+          <Text style={styles.eyebrow}>{language === 'es' ? 'UN PASO A LA VEZ' : 'ONE STEP AT A TIME'}</Text>
           <Text style={styles.pageTitle}>
-            {language === 'es' ? 'Tus acciones \uD83C\uDF80' : 'Your actions \uD83C\uDF80'}
+            {language === 'es' ? 'Tus acciones' : 'Your actions'}
           </Text>
           <Text style={styles.pageSub}>
-            {language === 'es' ? 'Pasos pequenos, grandes logros' : 'Small steps, big wins'}
+            {language === 'es' ? 'Pasos pequeños, grandes logros' : 'Small steps, big wins'}
           </Text>
         </View>
+        <XPBar xp={xp} language={language} />
         <View style={styles.emptyState}>
           <LottieView
             source={require('../../assets/animations/heart-mascot-sleeping.json')}
@@ -113,22 +123,23 @@ export default function ActivityScreen() {
             style={styles.emptyLottie}
           />
           <Text style={styles.emptyTitle}>
-            {language === 'es' ? 'Tu plan de accion' : 'Your action plan'}
+            {language === 'es' ? 'Tu plan de acción' : 'Your action plan'}
           </Text>
           <Text style={styles.emptySub}>
-            {language === 'es'
+            {isLocalMode ? t('localNoTests') : language === 'es'
               ? 'Sube tu primer examen para desbloquear misiones personalizadas.'
               : 'Upload your first exam to unlock personalized missions.'}
           </Text>
           <TouchableOpacity
             style={styles.uploadCTA}
-            onPress={() => router.push('/(tabs)/upload' as any)}
+            onPress={() => router.push(isLocalMode ? '/manual-entry' : '/(tabs)/upload')}
             activeOpacity={0.85}
           >
             <Upload size={20} color={Colors.primary} />
-            <Text style={styles.uploadCTAText}>{t('uploadResults')}</Text>
+            <Text style={styles.uploadCTAText}>{t(isLocalMode ? 'manualEntry' : 'uploadResults')}</Text>
           </TouchableOpacity>
         </View>
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -142,13 +153,16 @@ export default function ActivityScreen() {
       >
         {/* ── Header ── */}
         <View style={styles.headerBlock}>
+          <Text style={styles.eyebrow}>{language === 'es' ? 'UN PASO A LA VEZ' : 'ONE STEP AT A TIME'}</Text>
           <Text style={styles.pageTitle}>
-            {language === 'es' ? 'Tus acciones \uD83C\uDF80' : 'Your actions \uD83C\uDF80'}
+            {language === 'es' ? 'Tus acciones' : 'Your actions'}
           </Text>
           <Text style={styles.pageSub}>
-            {language === 'es' ? 'Pasos pequenos, grandes logros' : 'Small steps, big wins'}
+            {language === 'es' ? 'Pasos pequeños, grandes logros' : 'Small steps, big wins'}
           </Text>
         </View>
+
+        <XPBar xp={xp} language={language} />
 
         {/* ═══════════════════════ TODAY ═══════════════════════ */}
         <View style={styles.timeHeaderRow}>
@@ -215,7 +229,7 @@ export default function ActivityScreen() {
               ]}
               activeOpacity={0.85}
               disabled={todayPriorityDone}
-              onPress={() => todayPriorityDoneId && markDone(todayPriorityDoneId, 'priority', 50)}
+              onPress={() => topPriorityMarker && markDone(`priority_${topPriorityMarker.name}_${localDayKey()}`, 'priority', 50)}
             >
               {todayPriorityDone ? (
                 <>
@@ -250,10 +264,13 @@ export default function ActivityScreen() {
             return (
               <TouchableOpacity
                 key={mission.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${mission[language]}, ${done ? (language === 'es' ? 'Completado' : 'Done') : `+${mission.xp} XP`}`}
+                accessibilityState={{ disabled: done }}
                 style={styles.miniMissionRow}
                 activeOpacity={0.75}
                 disabled={done}
-                onPress={() => markDone(dailyId, 'daily', mission.xp)}
+                onPress={() => markDone(`${mission.id}_${localDayKey()}`, 'daily', mission.xp)}
               >
                 <View style={[styles.miniMissionIcon, done && { backgroundColor: Colors.optimal10 }]}>
                   <Icon size={16} color={done ? Colors.optimal : Colors.mutedForeground} />
@@ -357,28 +374,6 @@ export default function ActivityScreen() {
           <View style={styles.timeHeaderLine} />
         </View>
 
-        {/* Level progress card */}
-        <View style={styles.levelCard}>
-          <View style={styles.levelHeader}>
-            <View style={styles.levelIconWrap}>
-              <Sparkles size={16} color="#C87EA0" />
-            </View>
-            <Text style={styles.levelLabel}>
-              {language === 'es' ? `Nivel ${levelInfo.level}` : `Level ${levelInfo.level}`}
-            </Text>
-            <Text style={styles.levelXP}>
-              {levelInfo.currentXP} / {levelInfo.nextLevelXP} XP
-            </Text>
-          </View>
-          <View style={styles.xpBarBg}>
-            <LinearGradient
-              colors={['#F8B4D0', '#C87EA0']}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-              style={[styles.xpBarFill, { width: `${Math.max(4, levelInfo.progress * 100)}%` as any }]}
-            />
-          </View>
-        </View>
-
         {/* Key stats — 3 most meaningful, equal-weight grid */}
         <View style={styles.statsRow}>
           <View style={styles.statCell}>
@@ -415,10 +410,11 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingBottom: 130 },
 
   // Header
-  headerBlock: { marginBottom: 20 },
+  headerBlock: { marginBottom: 24, paddingTop: 8 },
+  eyebrow: { fontFamily: Typography.families.body, fontSize: 10, letterSpacing: 1.7, fontWeight: '700', color: Colors.primary, marginBottom: 8 },
   pageTitle: {
     fontFamily: Typography.families.display,
-    fontSize: 28, fontWeight: '800', color: Colors.foreground,
+    fontSize: 30, fontWeight: '700', color: Colors.foreground,
     letterSpacing: -0.5,
   },
   pageSub: {
@@ -490,16 +486,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20, padding: 18,
     marginBottom: 20,
-    borderWidth: 1, borderColor: '#FCE6EE',
+    borderWidth: 1, borderColor: '#E8EBF0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 10, elevation: 2,
+    shadowOpacity: 0.02, shadowRadius: 10, elevation: 1,
   },
   priorityHeader: { marginBottom: 6 },
   priorityBadge: {
     fontFamily: Typography.families.body,
     fontSize: 11, fontWeight: '800',
-    color: '#C87EA0', letterSpacing: 0.8,
+    color: Colors.primary, letterSpacing: 1.2,
   },
   priorityTitle: {
     fontFamily: Typography.families.display,
@@ -526,7 +522,7 @@ const styles = StyleSheet.create({
   },
   priorityItemLabel: { fontWeight: '700' },
   priorityDoneBtn: {
-    backgroundColor: '#C87EA0',
+    backgroundColor: Colors.primary,
     paddingVertical: 12, paddingHorizontal: 20,
     borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
@@ -582,7 +578,7 @@ const styles = StyleSheet.create({
   miniMissionRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: '#fff',
-    borderRadius: 14, padding: 14,
+    borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#E8EBF0',
     marginBottom: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
@@ -611,7 +607,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   miniMissionCheckDone: {
-    backgroundColor: '#C87EA0', borderColor: '#C87EA0',
+    backgroundColor: Colors.primary, borderColor: '#C87EA0',
   },
 
   // Weekly challenge
@@ -698,7 +694,7 @@ const styles = StyleSheet.create({
   // Empty state
   emptyState: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
-    padding: 40, gap: 12,
+    paddingVertical: 32, paddingHorizontal: 16, gap: 12,
   },
   emptyLottie: {
     width: 180, height: 180,
