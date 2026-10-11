@@ -11,7 +11,9 @@
     "test:local": "playwright test",
     "postinstall": "node scripts/prepare-web.cjs",
     "preweb": "node scripts/prepare-web.cjs",
-    "prestart": "node scripts/prepare-web.cjs"
+    "prestart": "node scripts/prepare-web.cjs",
+    "raly:connector": "node connector/server.mjs",
+    "test:connector": "node --test connector/*.test.mjs"
   },
   "dependencies": {
     "@expo/metro-config": "~54.0.14",

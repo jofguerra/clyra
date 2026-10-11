@@ -64,3 +64,11 @@ results index. Daily missions follow local dates and local weekly counts now car
 explicit aliases and shows no-data states rather than fuzzy substring matches.
 `tests/points-indicators.spec.ts` covers these behaviors, including Panama evening,
 maximum level, readable selectable systems and numeric trend limitations.
+
+## Mascot companion and experimental Raly connector
+
+See [the connector guide](docs/MASCOT_AND_RALY_CONNECTOR.md) for the contextual
+companion, motion controls and the local Raly service. Run `npm run raly:connector`
+on the same machine as the web browser, then open Tests > Connect Raly. Real
+authenticated portal access remains unvalidated; the connector tests use synthetic
+sessions. This does not enable cloud synchronization or native PDF extraction.

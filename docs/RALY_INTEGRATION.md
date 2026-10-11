@@ -44,10 +44,18 @@ Un conector basado en HTML depende de la estructura del portal y puede requerir
 actualizaciones cuando el proveedor cambie sus páginas. Un iframe o enlace al
 portal, por sí solo, no permite a Clyra leer su sesión o descargar sus resultados.
 
+## Avance del 11 de octubre de 2026
+
+Existe ahora un conector local experimental y una pantalla de conexión, listado y
+selección de PDF. El acceso autenticado real sigue pendiente de validación. Véase
+[Mascota y conector local](MASCOT_AND_RALY_CONNECTOR.md) para iniciar el servicio,
+los límites y la distinción entre pruebas sintéticas y conexión real.
+
 ## Plan de integración (9 de octubre de 2026)
 
-Este flujo es una propuesta pendiente de implementación. La importación manual
-del PDF en web sí está disponible. No hay un conector automático operativo.
+El siguiente plan documenta el diseño inicial. Parte del flujo local ya está
+implementada según el avance anterior; la conexión automática no se considera
+validada hasta comprobarla con una cuenta autorizada.
 
 ### Experiencia del usuario
 

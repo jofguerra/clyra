@@ -656,6 +656,14 @@ export default function TestsScreen() {
                     </View>
                 </TouchableOpacity>}
 
+                <TouchableOpacity style={styles.methodRow} onPress={() => router.push('/raly')} activeOpacity={0.85}>
+                    <FlaskConical size={22} color={Colors.primary} />
+                    <View style={styles.methodInfo}>
+                        <Text style={styles.methodTitle}>{language === 'es' ? 'Conectar Raly' : 'Connect Raly'}</Text>
+                        <Text style={styles.methodDesc}>{language === 'es' ? 'Conector local experimental · Selecciona y revisa tus estudios' : 'Experimental local connector · Select and review your studies'}</Text>
+                    </View>
+                </TouchableOpacity>
+
                 {/* ── Health Coverage ── */}
                 {biomarkers.length > 0 && (
                     <View style={styles.coverageSection}>

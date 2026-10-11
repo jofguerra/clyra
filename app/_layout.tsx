@@ -7,6 +7,7 @@ import { supabase } from '../services/supabase';
 import { useStore } from '../hooks/useStore';
 import { useSyncEffect } from '../hooks/useSync';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import MascotCompanion from '../components/MascotCompanion';
 import { AchievementUnlockModal } from '../components/AchievementUnlockModal';
 
 export default function RootLayout() {
@@ -68,6 +69,7 @@ export default function RootLayout() {
         <View style={{ flex: 1, backgroundColor: '#F3EDF1' }}>
         <View style={{ flex: 1, width: '100%', maxWidth: Platform.OS === 'web' ? WEB_APP_MAX_WIDTH : undefined, alignSelf: 'center', overflow: 'hidden' }}>
         <ErrorBoundary>
+            <MascotCompanion />
             <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Colors.background } }}>
                 <Stack.Screen name="onboarding" options={{ headerShown: false }} />
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />

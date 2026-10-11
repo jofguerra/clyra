@@ -953,7 +953,6 @@ export default function DashboardScreen() {
           /* ── Empty state (Lottie hero above already shows the mascot scene) ── */
           <View>
             <AnimatedSection delay={150} style={styles.emptyGreetBlock}>
-              <Mascot pose="waving" size={120} animation="wave" />
               <Text style={styles.mascotGreeting}>
                 {language === 'es' ? '¡Hola! Soy Clyra' : 'Hi! I\'m Clyra'}
               </Text>

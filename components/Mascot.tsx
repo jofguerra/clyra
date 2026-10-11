@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useMotionEnabled } from '../hooks/useMotionEnabled';
 import {
   View, Image, StyleSheet, Animated, Easing, ViewStyle,
 } from 'react-native';
@@ -20,14 +21,13 @@ export type MascotPose =
 export type MascotAnimation =
   | 'none'
   | 'idle-breath'       // gentle scale pulse — for Default/idle on most screens
-  | 'wave'              // rotating arm (future — needs individual layer animation)
+  | 'wave'              // full-body greeting using the original waving pose
   | 'bounce-in'         // entry animation: drop + settle
   | 'celebrate-bounce'  // happy bounce loop
   | 'thinking-tilt'     // slow head tilt
   | 'sleep-bob';        // soft vertical bob
 
-// ─── Pose → parts manifest ─────────────────────────────────────────────────────
-// Each pose is stacked bottom → top. Legs behind body, arms in front, face on top.
+// Original complete poses preserve authored limb and face placement.
 
 // Default has a pre-composited "whole heart.png" — use that for simplicity
 const DEFAULT_WHOLE = require('../Animations and Assets/Heart Mascot/Default/whole heart.png');
@@ -57,6 +57,7 @@ function useMascotAnimation(animation: MascotAnimation) {
   const translateY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    scale.setValue(1); rotate.setValue(0); translateY.setValue(0);
     if (animation === 'none') return;
 
     let loop: Animated.CompositeAnimation | null = null;
@@ -86,7 +87,7 @@ function useMascotAnimation(animation: MascotAnimation) {
         // Drop from above, settle with spring
         translateY.setValue(-40);
         scale.setValue(0.6);
-        Animated.parallel([
+        loop = Animated.parallel([
           Animated.spring(translateY, {
             toValue: 0,
             tension: 80,
@@ -99,7 +100,7 @@ function useMascotAnimation(animation: MascotAnimation) {
             friction: 5,
             useNativeDriver: true,
           }),
-        ]).start();
+        ]);
         break;
 
       case 'celebrate-bounce':
@@ -190,8 +191,14 @@ function useMascotAnimation(animation: MascotAnimation) {
         break;
     }
 
+    // Secondary buoyancy keeps breathing from looking like a simple zoom.
+    const float = animation === 'idle-breath' ? Animated.loop(Animated.sequence([
+      Animated.timing(translateY, { toValue:-3, duration:1800, easing:Easing.inOut(Easing.sin), useNativeDriver:true }),
+      Animated.timing(translateY, { toValue:0, duration:2200, easing:Easing.inOut(Easing.sin), useNativeDriver:true }),
+    ])) : null;
+    float?.start();
     loop?.start();
-    return () => loop?.stop();
+    return () => { loop?.stop(); float?.stop(); };
   }, [animation, scale, rotate, translateY]);
 
   const rotateInterpolate = rotate.interpolate({
@@ -223,11 +230,13 @@ export default function Mascot({
   animation = 'idle-breath',
   style,
 }: MascotProps) {
-  const animatedStyle = useMascotAnimation(animation);
+  const motion = useMotionEnabled();
+  const animatedStyle = useMascotAnimation(motion ? animation : 'none');
   const source = POSES[pose];
 
   return (
     <Animated.View
+      testID="mascot-motion"
       style={[{ width: size, height: size }, animatedStyle, style]}
       pointerEvents="none"
     >

@@ -58,3 +58,6 @@ Animations and Assets/*.zip
 
 /public/pdf.mjs
 /public/pdf.worker.min.mjs
+
+# Ephemeral local connector pairing key
+.raly-connector-token

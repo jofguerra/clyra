@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { SafeAreaView, ScrollView, Text, TextInput, View, Platform, ActivityIndicator, Switch } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useRouter } from 'expo-router';
+import { pendingRalyPdf, clearRalyPdf } from '../services/ralyConnector';
 import AppHeader from '../components/AppHeader';
 import Button from '../components/ui/Button';
 import { Colors } from '../constants/colors';
@@ -48,6 +49,17 @@ export default function ImportPdfScreen() {
       if (alive.current) setError(errors[e instanceof Error ? e.message : 'invalid'] || errors.invalid);
     } finally { picking.current = false; if (alive.current) setBusy(false); }
   };
+  useEffect(() => {
+    const incoming = pendingRalyPdf();
+    if (!incoming) return;
+    let cancelled = false;
+    setBusy(true);
+    importLocalPdf(incoming).then(parsed => {
+      if (!cancelled) { setFile(incoming); setDraft(parsed); clearRalyPdf(); }
+    }).catch(e => { if (!cancelled) { setError(errors[e instanceof Error ? e.message : 'invalid'] || errors.invalid); clearRalyPdf(); } })
+      .finally(() => { if (!cancelled) setBusy(false); });
+    return () => { cancelled = true; };
+  }, []);
   const edit = (index: number, patch: Partial<ReviewMarker>) => {
     setDraft(d => d && { ...d, biomarkers: d.biomarkers.map((row,i) => i === index ? { ...row, ...patch } : row) });
     setConfirmed(false); setError('');
